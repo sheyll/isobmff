@@ -185,7 +185,7 @@ test-suite spec
                      , text
                      , type-spec
                      , mtl
-                     , QuickCheck
+                     , QuickCheck < 2.11
                      , tagged
                      , pretty-types >= 0.2.1 && < 0.3
   default-language:    Haskell2010
