@@ -54,7 +54,7 @@ build AacInitSegment {..} =
      skipBox
        (Skip
           (TE.encodeUtf8
-             (T.pack "Lindenbaum GmbH isobmff-builder, Sven Heyll 2017"))) :|
+             (T.pack "Lindenbaum GmbH isobmff, Sven Heyll 2017"))) :|
      movie
        (movieHeader
           (MovieHeader $
