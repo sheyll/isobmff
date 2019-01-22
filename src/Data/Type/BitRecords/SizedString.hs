@@ -8,7 +8,7 @@ module Data.Type.BitRecords.SizedString
 
 import Data.Type.BitRecords.Core
 import Data.Type.BitRecords.Sized
-import Data.Type.BitRecords.Builder.Holey
+import Data.FunctionBuilder
 import Data.Type.BitRecords.Builder.LazyByteStringBuilder
 import qualified Language.Haskell.TH as TH
 import qualified Language.Haskell.TH.Quote as TH

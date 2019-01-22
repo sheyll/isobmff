@@ -1,16 +1,16 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.Type.BitRecords.Enum where
 
-import Data.Type.BitRecords.Core
-import Data.Type.BitRecords.Builder.BitBuffer
-import Data.Type.BitRecords.Builder.Holey
-import Data.Type.BitRecords.Builder.LazyByteStringBuilder
-import Data.Proxy
-import Data.Word
-import Data.Kind (Type)
-import GHC.TypeLits
-import Data.Kind.Extra
-import Data.Type.Pretty
+import           Data.Type.BitRecords.Core
+import           Data.Type.BitRecords.Builder.BitBuffer
+import           Data.FunctionBuilder
+import           Data.Type.BitRecords.Builder.LazyByteStringBuilder
+import           Data.Proxy
+import           Data.Word
+import           Data.Kind                      ( Type )
+import           GHC.TypeLits
+import           Data.Kind.Extra
+import           Data.Type.Pretty
 
 -- * BitRecordFields containing /enum/-like types
 
@@ -18,12 +18,13 @@ import Data.Type.Pretty
 -- the clauses of the (sum) type.
 data EnumOf enum where
   MkEnumOf
-    :: IsAn (EnumField enum size)
+    ::IsAn (EnumField enum size)
     -> IsA (FieldValue label enum)
     -> BitRecord
     -> EnumOf enum
 
-type BitRecordOfEnum (e :: IsAn (EnumOf enum)) = (RenderEnumOf (Eval e) :: BitRecord)
+type BitRecordOfEnum (e :: IsAn (EnumOf enum))
+  = (RenderEnumOf (Eval e) :: BitRecord)
 
 type family RenderEnumOf (e :: EnumOf enum) :: BitRecord where
   RenderEnumOf ('MkEnumOf mainField mainFieldVal extra) =
@@ -32,8 +33,8 @@ type family RenderEnumOf (e :: EnumOf enum) :: BitRecord where
 -- | Physical representation of an 'EnumOf', this is an abstract type
 data EnumField (enum :: Type) (size :: Nat)
 
-type BitRecordFieldOfEnumField (x :: IsA (EnumField e s)) =
-  MkField ('MkFieldCustom :: BitField (EnumValue e) e s)
+type BitRecordFieldOfEnumField (x :: IsA (EnumField e s))
+  = MkField ( 'MkFieldCustom :: BitField (EnumValue e) e s)
 
 -- | A fixed size 'EnumField'
 data FixedEnum (enum :: Type) (size :: Nat) :: IsAn (EnumField enum size)
@@ -105,7 +106,7 @@ type family FromEnum enum (entry :: enum) :: Nat
 
 -- | An enum value supplied at runtime.
 data EnumValue e where
-  MkEnumValue :: KnownNat (FromEnum e v) => Proxy (v :: e) -> EnumValue e
+  MkEnumValue ::KnownNat (FromEnum e v) => Proxy (v :: e) -> EnumValue e
 
 -- | Create an 'EnumValue' from a 'Proxy'. TODO remove?
 enumValueProxy :: KnownNat (FromEnum e v) => Proxy (v :: e) -> EnumValue e
@@ -113,28 +114,34 @@ enumValueProxy = MkEnumValue
 
 fromEnumValue :: EnumValue e -> Word64
 fromEnumValue (MkEnumValue p) = enumValue p
-  where
-    enumValue :: forall proxy (v :: enum) . KnownNat (FromEnum enum v) => proxy v -> Word64
-    enumValue _ = fromIntegral (natVal (Proxy @(FromEnum enum v)))
+ where
+  enumValue
+    :: forall proxy (v :: enum)
+     . KnownNat (FromEnum enum v)
+    => proxy v
+    -> Word64
+  enumValue _ = fromIntegral (natVal (Proxy @(FromEnum enum v)))
 
 instance
   forall (size :: Nat) r e (v :: e) (f :: IsA (BitRecordField ('MkFieldCustom :: BitField (EnumValue e) e size))) .
     (KnownNat (FromEnum e v), KnownChunkSize size) =>
   BitStringBuilderHoley (Proxy (f := v)) r where
-  bitStringBuilderHoley _ =
-    immediate (appendBitString
-               (bitStringProxyLength (Proxy @size)
-                 (fromIntegral (natVal (Proxy @(FromEnum e v))))))
+  bitStringBuilderHoley _ = immediate
+    (appendBitString
+      (bitStringProxyLength (Proxy @size)
+                            (fromIntegral (natVal (Proxy @(FromEnum e v))))
+      )
+    )
 
 instance
   forall (size :: Nat) r e  .
   (KnownChunkSize size) =>
   BitStringBuilderHoley (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r
   where
-    type ToBitStringBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r =
-      EnumValue e -> r
-    bitStringBuilderHoley _ =
-        indirect (appendBitString . bitStringProxyLength (Proxy @size) . fromEnumValue)
+  type ToBitStringBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r =
+    EnumValue e -> r
+  bitStringBuilderHoley _ = addParameter
+    (appendBitString . bitStringProxyLength (Proxy @size) . fromEnumValue)
 
 type instance ToPretty (EnumValue e) = PutStr "<<enum>>"
 type instance PrettyCustomFieldValue (EnumValue e) e size (v :: e) =

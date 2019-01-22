@@ -1,5 +1,5 @@
 name:                isobmff
-version:             0.12.0.0
+version:             0.13.0.0
 synopsis:            A parser and generator for the ISO-14496-12/14 base media file format
 description:         Please see README.md
 homepage:            https://github.com/sheyll/isobmff#readme
@@ -103,7 +103,6 @@ library
                      , Data.Type.BitRecords.Arithmetic
                      , Data.Type.BitRecords.Assert
                      , Data.Type.BitRecords.Builder.BitBuffer
-                     , Data.Type.BitRecords.Builder.Holey
                      , Data.Type.BitRecords.Builder.LazyByteStringBuilder
                      , Data.Type.BitRecords.Core
                      , Data.Type.BitRecords.Enum
@@ -111,16 +110,17 @@ library
                      , Data.Type.BitRecords.Sized
   build-depends:       base >= 4.9 && < 5
                      , bytestring
-                     , type-list
+                     -- , type-list
                      , data-default
                      , vector
                      , singletons
                      , tagged
                      , time
+                     , function-builder >= 0.1 && < 0.2
                      , text
                      , type-spec >= 0.3
                      , mtl
-                     , pretty-types >= 0.2.3 && < 0.3
+                     , pretty-types >= 0.2.3 && < 0.4
                      , template-haskell
   default-language:    Haskell2010
   ghc-options:       -O2 -Wall -funbox-strict-fields -fno-warn-unused-do-bind -fprint-explicit-kinds
@@ -185,10 +185,9 @@ test-suite spec
                      , text
                      , type-spec
                      , mtl
-                     , QuickCheck < 2.11
+                     , QuickCheck
                      , tagged
-                     , pretty-types >= 0.2.1 && < 0.3
-  default-language:    Haskell2010
+                     , pretty-types >= 0.2.1 && < 0.4
   default-extensions:  BangPatterns
                      , ConstraintKinds
                      , CPP
@@ -218,7 +217,7 @@ test-suite spec
                      , TypeOperators
                      , TypeSynonymInstances
                      , UnicodeSyntax
-  ghc-options:       -Wall -O0 -j +RTS -A256m -n2m -RTS
+  ghc-options:       -Wall +RTS -A256m -n2m -RTS
                      -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures -fprint-explicit-kinds
   if flag(complextests)
     cpp-options:      -DCOMPLEXTESTS
@@ -229,7 +228,6 @@ benchmark bit-records
   type:                exitcode-stdio-1.0
   hs-source-dirs:      benchmarks/bit-records
   main-is:             Main.hs
-  default-language:    Haskell2010
   build-depends:       base >= 4.9 && < 5
                      , isobmff
                      , binary

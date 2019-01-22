@@ -21,16 +21,16 @@ esdBox :: forall (record :: IsA (Descriptor 'ES_Descr)) (rendered :: BitRecord) 
          , rendered ~ (RenderEsDescr record))
        => Proxy record -> ToBitStringBuilder (Proxy rendered) EsdBox
 esdBox =
-  runHoley
+  toFunction
   . esdBoxHoley
 
 esdBoxHoley :: forall (record :: IsA (Descriptor 'ES_Descr)) r (rendered :: BitRecord) .
                ( BitStringBuilderHoley (Proxy rendered) r
                , rendered ~ (RenderEsDescr record)
                )
-             => Proxy record -> Holey EsdBox r (ToBitStringBuilder (Proxy rendered) r)
+             => Proxy record -> FunctionBuilder EsdBox r (ToBitStringBuilder (Proxy rendered) r)
 esdBoxHoley _p =
-  hoistM (fullBox 0 . Esd) $
+  mapAccumulator (fullBox 0 . Esd) $
   bitBuilderBoxHoley (Proxy @rendered)
 
 type RenderEsDescr (d :: IsA (Descriptor 'ES_Descr)) =

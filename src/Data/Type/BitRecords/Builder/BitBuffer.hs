@@ -90,7 +90,7 @@ emptyBitString = BitString 0 0
 -- The input values are expected to be in the order of the fields, i.e.:
 --
 -- @
--- runHoley $ bitStringBuilderHoley (Proxy :: Proxy TwoFields) 1 2
+-- toFunction $ bitStringBuilderHoley (Proxy :: Proxy TwoFields) 1 2
 -- @
 --
 -- Will result in:
