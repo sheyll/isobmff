@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
+{-# LANGUAGE UndecidableInstances #-}
 module TypeLayoutSpec (spec) where
 
 import Test.Hspec
-import GHC.TypeLits ()
 import Data.ByteString.IsoBaseFileFormat.Util.TypeLayout
 import Data.ByteString.IsoBaseFileFormat.Box
 
@@ -12,10 +12,10 @@ spec =
   describe "IsRuleConform" $ do
     describe "TopLevel" $ do
       it "validates TopLevel Boxes" $ test1 `shouldBe` ()
-    describe "ContainerBoxes" $ do
-      describe "OnceOptional" $ do
-        it "validates empty containters" $ test2a `shouldBe` ()
-        it "validates a singleton container" $ test2b `shouldBe` ()
+      describe "ContainerBoxes" $ do
+       describe "OnceOptional" $ do
+         it "validates empty containters" $ test2a `shouldBe` ()
+         it "validates a singleton container" $ test2b `shouldBe` ()
       describe "SomeOptional" $ do
         it "validates empty containters" $ test3a `shouldBe` ()
         it "validates a singleton container" $ test3b `shouldBe` ()
@@ -39,12 +39,16 @@ spec =
 
 ----
 data Foo
+type instance BoxTypeSymbol Foo = ToSymbol Foo
 type instance ToSymbol Foo = "foo "
 data Fov
+type instance BoxTypeSymbol Fov = ToSymbol Fov
 type instance ToSymbol Fov = "fov "
 data Bar
+type instance BoxTypeSymbol Bar = ToSymbol Bar
 type instance ToSymbol Bar = "bar "
 data Baz
+type instance BoxTypeSymbol Baz = ToSymbol Baz
 type instance ToSymbol Baz = "baz "
 ----
 type TestRule1 = TopLevel (MatchSymbol "foo ")
@@ -52,9 +56,11 @@ type TestType1 = Foo
 test1 :: (IsRuleConform TestType1 TestRule1 ~ 'True) => ()
 test1 = ()
 ----
+
 type TestRule2 = TopLevel (ContainerBox Foo '[OnceOptionalX (MatchSymbol "bar ")])
 type TestType2a = Box (ContainerBox Foo '[])
-test2a :: (IsRuleConform TestType2a TestRule2 ~ 'True) => ()
+test2a :: (IsRuleConform TestType2a TestRule2 ~ 'True
+          ) => ()
 test2a = ()
 --
 type TestType2b = Box (ContainerBox Foo '[Bar])

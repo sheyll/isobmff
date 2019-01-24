@@ -13,6 +13,7 @@ import qualified Data.Vector as Vec
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as B
+import Numeric.Natural
 
 
 -- * Scalar box fields
@@ -243,7 +244,7 @@ instance forall arr o len (label :: Symbol) .
   => FromTypeLit (ScalarArray label len o) (arr :: [Nat]) where
   fromTypeLit _ =
     let s = sing :: Sing arr
-        vs :: [Integer]
+        vs :: [Natural]
         !vs = fromSing s
         vs' :: [o]
         !vs' = fromIntegral <$> vs

@@ -11,7 +11,7 @@
 module Data.ByteString.IsoBaseFileFormat.Box where
 
 import Data.ByteString.IsoBaseFileFormat.ReExports
-import           Data.Singletons.Prelude.List                      ((:++),
+import           Data.Singletons.Prelude.List                      (type (++),
                                                                     Length)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -89,7 +89,7 @@ data Boxes (boxTypes :: [Type]) where
     NoBoxes :: Boxes '[]
     (:.) :: IsBox l => !(Box l) -> !(Boxes r) -> Boxes (Box l ': r)
     -- | Create a 'Boxes' collection from two 'Box'es
-    (:<>) :: !(Boxes l) -> !(Boxes r) -> Boxes (l :++ r)
+    (:<>) :: !(Boxes l) -> !(Boxes r) -> Boxes (l ++ r)
     (:|) :: (IsBox l, IsBox r) => !(Box l) -> !(Box r) -> Boxes '[Box l, Box r]
 
 infixr 1 :<>

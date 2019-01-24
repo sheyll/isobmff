@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 -- | Full Boxes
 module Data.ByteString.IsoBaseFileFormat.Util.FullBox
        (FullBox(..), fullBox, BoxFlags(..))
