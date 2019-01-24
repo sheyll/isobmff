@@ -25,8 +25,6 @@ module Data.Type.BitRecords.Builder.BitBuffer
     ) where
 
 import           Data.Proxy
-
-import           Data.Type.BitRecords.Arithmetic
 import           Data.Bits
 import           Data.Word
 import           Data.Kind ( Constraint )
@@ -37,7 +35,7 @@ type BitStringMaxLength = 64
 
 -- | Calculate the modulus of a number and the 'BitStringMaxLength'.
 type family ModuloBitStringMaxLength (len :: Nat) :: Nat where
-        ModuloBitStringMaxLength len = len `RemPow2` 6
+        ModuloBitStringMaxLength len = len `Mod` BitStringMaxLength
 
 -- | The maximum number of bits a 'BitBuffer' can hold.
 bitStringMaxLength :: Num a => a

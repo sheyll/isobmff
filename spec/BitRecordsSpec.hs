@@ -226,35 +226,35 @@ testTakeLastN ::
 testTakeLastN = Valid
 
 testRem
-  :: Expect '[ Rem 0 3 `ShouldBe` 0
-             , Rem 1 3 `ShouldBe` 1
-             , Rem 2 3 `ShouldBe` 2
-             , Rem 3 3 `ShouldBe` 0
-             , Rem 4 3 `ShouldBe` 1
-             , Rem 5 3 `ShouldBe` 2
-             , Rem 6 3 `ShouldBe` 0
+  :: Expect '[ Mod 0 3 `ShouldBe` 0
+             , Mod 1 3 `ShouldBe` 1
+             , Mod 2 3 `ShouldBe` 2
+             , Mod 3 3 `ShouldBe` 0
+             , Mod 4 3 `ShouldBe` 1
+             , Mod 5 3 `ShouldBe` 2
+             , Mod 6 3 `ShouldBe` 0
             ]
 testRem = Valid
 
 testRemPow2
   ::
-  "RemPow2"
+  "ModPow2"
   #########
 
   "Remainder of '1'"
   ~~~~~~~~~~~~~~~~~~
 
-      It "1 `RemPow2` 1 is 1"  (Is 1 (RemPow2 1 1))
-  -*  It "1 `RemPow2` 8 is 1"  (Is 1 (RemPow2 1 8))
+      It "1 `ModPow2` 1 is 1"  (Is 1 (ModPow2 1 1))
+  -*  It "1 `ModPow2` 8 is 1"  (Is 1 (ModPow2 1 8))
 
   -/-
 
    "Remainder of '3916441'"
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-      It " `RemPow2` 1 is 1"   (Is 1 (RemPow2 3916441 1))
-  -*  It " `RemPow2` 4 is 9"   (Is 9 (RemPow2 3916441 4))
-  -*  It " `RemPow2` 8 is 153" (Is 153 (RemPow2 3916441 8))
+      It " `ModPow2` 1 is 1"   (Is 1 (ModPow2 3916441 1))
+  -*  It " `ModPow2` 4 is 9"   (Is 9 (ModPow2 3916441 4))
+  -*  It " `ModPow2` 8 is 153" (Is 153 (ModPow2 3916441 8))
 
 testRemPow2 = Valid
 

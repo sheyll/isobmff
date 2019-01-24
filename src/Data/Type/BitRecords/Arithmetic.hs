@@ -1,44 +1,12 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.Type.BitRecords.Arithmetic where
 
-import Data.Type.Bool
-import GHC.TypeLits
+import           Data.Type.Bool
+import           GHC.TypeLits
 
--- | Get the remainder of the integer division of x and y, such that @forall x
--- y. exists k. (Rem x y) == x - y * k@ The algorithm is: count down x
--- until zero, incrementing the accumulator at each step. Whenever the
--- accumulator is equal to y set it to zero.
---
--- If the accumulator has reached y reset it. It is important to do this
--- BEFORE checking if x == y and then returning the accumulator, for the case
--- where x = k * y with k > 0. For example:
---
--- @
---  6 `Rem` 3     = RemImpl 6 3 0
---  RemImpl 6 3 0 = RemImpl (6-1) 3 (0+1)   -- RemImpl Clause 4
---  RemImpl 5 3 1 = RemImpl (5-1) 3 (1+1)   -- RemImpl Clause 4
---  RemImpl 4 3 2 = RemImpl (4-1) 3 (2+1)   -- RemImpl Clause 4
---  RemImpl 3 3 3 = RemImpl 3 3 0           -- RemImpl Clause 2 !!!
---  RemImpl 3 3 0 = 0                       -- RemImpl Clause 3 !!!
--- @
-type family Rem (x :: Nat) (y :: Nat) :: Nat where
-  Rem x 1 = 0
-  Rem x 0 = TypeError ('Text "divide by zero: " ':<>: 'ShowType x ':<>: 'Text " `Rem` 0")
-  Rem x y = RemImpl x y 0
-type family
-  RemImpl (x :: Nat) (y :: nat) (acc :: Nat) :: Nat where
-  -- finished if x was < y:
-  RemImpl 0 y acc = acc
-  RemImpl x y y   = RemImpl x y 0
-  -- finished if x was >= y:
-  RemImpl y y acc = acc
-  -- the base case
-  RemImpl x y acc = RemImpl (x - 1) y (acc + 1)
-
--- | Efficient 'Rem' operation for power of 2 values. Note that x must be
--- representable by 'RemPow2Bits' bits.
-type RemPow2 x p =
-  FromBits (TakeLastN p (ToBits x RemPow2Bits))
+-- | Efficient 'Mod' operation for power of 2 values. Note that x must be
+-- representable by 'ModPow2Bits' bits.
+type ModPow2 value power = FromBits (TakeLastN power (ToBits value ModPow2Bits))
 
 type TakeLastN n xs = TakeLastNImplRev n xs '[]
 
@@ -53,16 +21,8 @@ type family TakeLastNImplTakeNRev (n :: Nat) (rs :: [t]) (acc :: [t]) :: [t] whe
   TakeLastNImplTakeNRev n (r ': rs) acc = TakeLastNImplTakeNRev (n-1) rs (r ': acc)
 
 
--- | Maximum number of bits an argument @x@ of 'RemPow2' may occupy.
-type RemPow2Bits = 32
-
--- | Integer division of x and y: @Div x y  ==> x / y@,
--- NOTE This only works for small numbers currently
-type Div (x :: Nat) (y :: Nat) = DivImpl (x - (x `Rem` y)) y 0
-type family
-  DivImpl (x :: Nat) (y :: nat) (acc :: Nat) :: Nat where
-  DivImpl 0 y acc = acc
-  DivImpl x y acc = If (x + 1 <=? y) acc (DivImpl (x - y) y (acc + 1))
+-- | Maximum number of bits an argument @x@ of 'ModPow2' may occupy.
+type ModPow2Bits = 32
 
 -- * Bit manipulation
 
