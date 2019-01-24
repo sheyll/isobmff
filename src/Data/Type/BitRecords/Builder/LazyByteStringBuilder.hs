@@ -15,14 +15,14 @@ import GHC.TypeLits
 import Data.Monoid
 import Control.Category
 import Prelude hiding ((.), id)
-import Data.ByteString.Builder
+import qualified Data.ByteString.Builder as SB
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString as SB
 import Text.Printf
 
 -- | A wrapper around a builder derived from a 'BitStringBuilderState'
 data BuilderBox where
-  MkBuilderBox :: !Word64 -> !Builder -> BuilderBox
+  MkBuilderBox :: !Word64 -> !SB.Builder -> BuilderBox
 
 instance Semigroup BuilderBox where
   (MkBuilderBox !ls !lb) <> (MkBuilderBox !rs !rb) =
@@ -31,7 +31,7 @@ instance Semigroup BuilderBox where
 instance Monoid BuilderBox where
   mempty = MkBuilderBox 0 mempty
 
--- | Create a 'Builder' from a 'BitRecord' and store it in a 'BuilderBox'
+-- | Create a 'SB.Builder' from a 'BitRecord' and store it in a 'BuilderBox'
 bitBuilderBox ::
   forall (record :: BitRecord) .
   BitStringBuilderHoley (Proxy record) BuilderBox
@@ -50,7 +50,7 @@ wrapBitBuilderBox ::
   -> ToBitStringBuilder (Proxy record) wrapped
 wrapBitBuilderBox !f !p = toFunction (mapAccumulator f (bitBuilderBoxHoley p))
 
--- | Create a 'Builder' from a 'BitRecord' and store it in a 'BuilderBox';
+-- | Create a 'SB.Builder' from a 'BitRecord' and store it in a 'BuilderBox';
 -- return a 'FunctionBuilder' monoid that does that on 'toFunction'
 bitBuilderBoxHoley ::
   forall (record :: BitRecord) r .
@@ -73,7 +73,7 @@ newtype BitStringBuilder =
   deriving (Monoid, Semigroup)
 
 runBitStringBuilder
-  :: BitStringBuilder -> Builder
+  :: BitStringBuilder -> SB.Builder
 runBitStringBuilder !w =
   getBitStringBuilderStateBuilder $
   flushBitStringBuilder $ appBitStringBuilder w initialBitStringBuilderState
@@ -89,10 +89,10 @@ appBitStringBuilder !w = appEndo (getDual (unBitStringBuilder w))
 
 data BitStringBuilderState where
         BitStringBuilderState ::
-          !Builder -> !BitStringBuilderChunk -> !Word64 -> BitStringBuilderState
+          !SB.Builder -> !BitStringBuilderChunk -> !Word64 -> BitStringBuilderState
 
 getBitStringBuilderStateBuilder
-  :: BitStringBuilderState -> Builder
+  :: BitStringBuilderState -> SB.Builder
 getBitStringBuilderStateBuilder (BitStringBuilderState !builder _ _) = builder
 
 initialBitStringBuilderState
@@ -128,7 +128,7 @@ flushBitStringBuilder (BitStringBuilderState !bldr !buff !totalSize) =
              else let !flushOffset' = flushOffset + 8
                       !bldr'' =
                         bldr' <>
-                        word8 (fromIntegral
+                        SB.word8 (fromIntegral
                                  ((part `unsafeShiftR`
                                    (bitStringMaxLength - flushOffset')) .&.
                                   0xFF))
@@ -148,7 +148,7 @@ appendBitString !x' =
                   then BitStringBuilderState builder buff' totalSize
                   else let !nextBuilder =
                              builder <>
-                             word64BE (bitStringBuilderChunkContent buff')
+                             SB.word64BE (bitStringBuilderChunkContent buff')
                            !totalSize' = totalSize + bitStringMaxLengthBytes
                        in go rest nextBuilder emptyBitStringBuilderChunk totalSize'
 
@@ -159,7 +159,7 @@ appendStrictByteString !sb =
   foldMap (appendBitString . bitString 8 . fromIntegral) (SB.unpack sb)
 
 runBitStringBuilderHoley
-  :: FunctionBuilder BitStringBuilder Builder a -> a
+  :: FunctionBuilder BitStringBuilder SB.Builder a -> a
 runBitStringBuilderHoley (FB !x) = x runBitStringBuilder
 
 -- * 'BitString' construction from 'BitRecord's
@@ -302,11 +302,11 @@ instance BitStringBuilderHoley (Proxy 'EmptyBitRecord) a where
 
 -- ** Tracing/Debug Printing
 
--- | Print a 'Builder' to a space seperated series of hexa-decimal bytes.
-printBuilder :: Builder -> String
+-- | Print a 'SB.Builder' to a space seperated series of hexa-decimal bytes.
+printBuilder :: SB.Builder -> String
 printBuilder b =
   ("<< " ++) $
-  (++ " >>") $ unwords $ printf "%0.2x" <$> B.unpack (toLazyByteString b)
+  (++ " >>") $ unwords $ printf "%0.2x" <$> B.unpack (SB.toLazyByteString b)
 
 bitStringPrinter
   :: BitStringBuilderHoley a String
