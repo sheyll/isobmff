@@ -6,8 +6,8 @@ packages:
 extra-deps:
 - pretty-types-0.3.0.1
 - type-spec-0.4.0.0
+- function-builder-0.1.0.1
 
 flags: {}
 
 extra-package-dbs: []
-
