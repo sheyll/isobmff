@@ -4,16 +4,11 @@ module Data.ByteString.IsoBaseFileFormat.Util.TypeLayout where
 
 import Data.Kind
 import Data.Type.Bool
-import Data.Singletons (Apply, type (~>))
 import Data.Type.Equality
 import GHC.TypeLits
 
 ----
 type family IsRuleConform (b :: k) (r :: l) :: Bool
-data IsRuleConform0 :: k ~> l ~> Bool
-type instance Apply IsRuleConform0 ts = IsRuleConform1 ts
-data IsRuleConform1 :: k -> l ~> Bool
-type instance Apply (IsRuleConform1 ts) rule = IsRuleConform ts rule
 ----
 data TopLevel  :: Type -> Type
 type instance IsRuleConform t (TopLevel rule) = IsRuleConform t rule
@@ -26,8 +21,6 @@ type instance IsRuleConform t (OneOf (r ': rs)) =
 data MatchSymbol :: Symbol -> Type
 type instance IsRuleConform b (MatchSymbol fourcc) = ToSymbol b == fourcc
 type family ToSymbol t :: Symbol
-data ToSymbol0 :: Type ~> Symbol
-type instance Apply ToSymbol0 t = ToSymbol t
 ----
 data OnceOptionalX t
 data SomeOptionalX t

@@ -33,7 +33,7 @@ trackExtends
 trackExtends =
    wrapBitBuilderBox (fullBox 0 . MkTrackExtends) (Proxy @TrackExtendsBody)
 
--- | Defaults for movie fragments - the type alias
+
 newtype TrackExtends where
   MkTrackExtends :: BuilderBox -> TrackExtends
   deriving (IsBoxContent)
