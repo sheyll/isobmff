@@ -1,24 +1,2 @@
-language: c
-
-sudo: false
-cache:
-  directories:
-  - $HOME/.stack/
-
-matrix:
-  include:
-    - env: CABALVER=2.4 GHCVER=8.6.3
-      addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.3],sources: [hvr-ghc]}}
-
-before_install:
-  - mkdir -p ~/.local/bin
-  - export PATH=~/.local/bin:$PATH
-  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar -xzO --wildcards '*/stack' > ~/.local/bin/stack
-  - chmod a+x ~/.local/bin/stack
-
-install:
-  - stack -j 2 setup --no-terminal --resolver nightly
-
-script:
-  - stack test --flag isobmff-builder:-complextests --flag isobmff-builder:-fullbenchmarks --fast --no-terminal
-  - stack bench --flag isobmff-builder:-complextests --flag isobmff-builder:-fullbenchmarks --fast --no-terminal
+ghc:
+        - 8.6.3
