@@ -12,9 +12,9 @@ import           GHC.TypeLits
 data DecoderConfigDescriptor
        (ot :: ObjectTypeIndication)
        (st :: StreamType)
-          :: [IsA (DecoderSpecificInfo ot st)]
-          -> [IsA (Descriptor 'ProfileLevelIndicationIndexDescr)]
-          -> IsA (Descriptor 'DecoderConfigDescr)
+          :: [To (DecoderSpecificInfo ot st)]
+          -> [To (Descriptor 'ProfileLevelIndicationIndexDescr)]
+          -> To (Descriptor 'DecoderConfigDescr)
 
 type instance From (DecoderConfigDescriptor ot st di ps) =
   'MkDescriptor (DecoderConfigDescriptorBody ot st di ps)
@@ -22,8 +22,8 @@ type instance From (DecoderConfigDescriptor ot st di ps) =
 type family
     DecoderConfigDescriptorBody
       ot st
-      (di :: [IsA (DecoderSpecificInfo ot st)])
-      (ps :: [IsA (Descriptor 'ProfileLevelIndicationIndexDescr)])
+      (di :: [To (DecoderSpecificInfo ot st)])
+      (ps :: [To (Descriptor 'ProfileLevelIndicationIndexDescr)])
         :: BitRecord
   where
     DecoderConfigDescriptorBody ot st di ps =
@@ -45,8 +45,8 @@ type family
 -- ** 'ProfileLevelIndicationIndexDescriptor'
 
 data ProfileLevelIndicationIndexDescriptor
-  :: IsA (FieldValue "profileLevelIndicationIndex" Nat)
-  -> IsA (Descriptor 'ProfileLevelIndicationIndexDescr)
+  :: To (FieldValue "profileLevelIndicationIndex" Nat)
+  -> To (Descriptor 'ProfileLevelIndicationIndexDescr)
 
 type instance From (ProfileLevelIndicationIndexDescriptor val) =
   'MkDescriptor

@@ -18,12 +18,12 @@ import           Data.Type.Pretty
 -- the clauses of the (sum) type.
 data EnumOf enum where
   MkEnumOf
-    ::IsAn (EnumField enum size)
-    -> IsA (FieldValue label enum)
+    ::To (EnumField enum size)
+    -> To (FieldValue label enum)
     -> BitRecord
     -> EnumOf enum
 
-type BitRecordOfEnum (e :: IsAn (EnumOf enum))
+type BitRecordOfEnum (e :: To (EnumOf enum))
   = (RenderEnumOf (From e) :: BitRecord)
 
 type family RenderEnumOf (e :: EnumOf enum) :: BitRecord where
@@ -33,11 +33,11 @@ type family RenderEnumOf (e :: EnumOf enum) :: BitRecord where
 -- | Physical representation of an 'EnumOf', this is an abstract type
 data EnumField (enum :: Type) (size :: Nat)
 
-type BitRecordFieldOfEnumField (x :: IsA (EnumField e s))
+type BitRecordFieldOfEnumField (x :: To (EnumField e s))
   = MkField ( 'MkFieldCustom :: BitField (EnumValue e) e s)
 
 -- | A fixed size 'EnumField'
-data FixedEnum (enum :: Type) (size :: Nat) :: IsAn (EnumField enum size)
+data FixedEnum (enum :: Type) (size :: Nat) :: To (EnumField enum size)
 
 -- | An enum that can be extended with an additional 'BitRecordField', following
 -- the  regular enum field; the extension is optional, i.e. only if the
@@ -45,13 +45,13 @@ data FixedEnum (enum :: Type) (size :: Nat) :: IsAn (EnumField enum size)
 data ExtEnum (enum :: Type)
              (size :: Nat)
              (extInd :: enum)
-             (extField :: IsA (BitRecordField (t :: BitField rt0 (st0 :: k0) len0)))
-             :: IsAn (EnumField enum size)
+             (extField :: To (BitRecordField (t :: BitField rt0 (st0 :: k0) len0)))
+             :: To (EnumField enum size)
 
 -- | Create an 'EnumOf' that sets an enum to a static value.
-data SetEnum (l :: Symbol) (ef :: IsAn (EnumField enum size)) (v :: enum) :: IsAn (EnumOf enum)
+data SetEnum (l :: Symbol) (ef :: To (EnumField enum size)) (v :: enum) :: To (EnumOf enum)
 
-type instance From (SetEnum (l :: Symbol) (ei :: IsAn (EnumField enum size)) value) =
+type instance From (SetEnum (l :: Symbol) (ei :: To (EnumField enum size)) value) =
   'MkEnumOf
      ei
      (StaticFieldValue l value)
@@ -60,17 +60,17 @@ type instance From (SetEnum (l :: Symbol) (ei :: IsAn (EnumField enum size)) val
 -- | Create an 'EnumOf' that sets the enum to a runtime value.
 data EnumParam
      (label :: Symbol)
-     (ef :: IsAn (EnumField (enum :: Type) (size :: Nat)))
-     :: IsAn (EnumOf enum)
-type instance From (EnumParam label (ei :: IsAn (EnumField enum size))) =
+     (ef :: To (EnumField (enum :: Type) (size :: Nat)))
+     :: To (EnumOf enum)
+type instance From (EnumParam label (ei :: To (EnumField enum size))) =
   'MkEnumOf
      ei
      (RuntimeFieldValue label)
      'EmptyBitRecord
 
 -- | Create an 'EnumOf' that sets an extended enum to an extended static value.
-data SetEnumAlt (l :: Symbol) (ef :: IsAn (EnumField (enum :: Type) (size :: Nat))) (v :: k)
-  :: IsAn (EnumOf enum)
+data SetEnumAlt (l :: Symbol) (ef :: To (EnumField (enum :: Type) (size :: Nat))) (v :: k)
+  :: To (EnumOf enum)
 
 type instance From (SetEnumAlt (l :: Symbol) (ExtEnum enum size extInd extField) value) =
   -- TODO maybe enrich the demoteRep type of 'MkField??
@@ -86,8 +86,8 @@ type instance From (SetEnumAlt (l :: Symbol) (FixedEnum enum size) value) =
 -- | Create an 'EnumOf' that sets the extended enum to a runtime value.
 data EnumParamAlt
   (label :: Symbol)
-  (ef :: IsAn (EnumField (enum :: Type) (size :: Nat)))
-  :: IsAn (EnumOf enum)
+  (ef :: To (EnumField (enum :: Type) (size :: Nat)))
+  :: To (EnumOf enum)
 
 type instance From (EnumParamAlt label (ExtEnum enum size extInd extField)) =
   'MkEnumOf
@@ -123,7 +123,7 @@ fromEnumValue (MkEnumValue p) = enumValue p
   enumValue _ = fromIntegral (natVal (Proxy @(FromEnum enum v)))
 
 instance
-  forall (size :: Nat) r e (v :: e) (f :: IsA (BitRecordField ('MkFieldCustom :: BitField (EnumValue e) e size))) .
+  forall (size :: Nat) r e (v :: e) (f :: To (BitRecordField ('MkFieldCustom :: BitField (EnumValue e) e size))) .
     (KnownNat (FromEnum e v), KnownChunkSize size) =>
   BitStringBuilderHoley (Proxy (f := v)) r where
   bitStringBuilderHoley _ = immediate

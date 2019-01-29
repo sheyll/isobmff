@@ -13,10 +13,10 @@ data Descriptor :: ClassTag n -> Type where
 
 -- TODO ok... this fixed the current problem in DecoderSpecificInfo .. but remove this instances ... or the above ... or ... I dunno
 
-data BitRecordOfDescriptor :: IsA (Descriptor c :-> BitRecord)
+data BitRecordOfDescriptor :: To (Descriptor c :-> BitRecord)
 
 type instance
-  BitRecordOfDescriptor $~ ('MkDescriptor body :: Descriptor (tag :: ClassTag tagInd)) =
+  Apply BitRecordOfDescriptor ('MkDescriptor body :: Descriptor (tag :: ClassTag tagInd)) =
    FieldU8 := tagInd
    .+: From (StaticExpandableContent body)
 
@@ -67,5 +67,5 @@ data ClassTag (tag :: Nat) where
   DependencyPointer                ::ClassTag 0x67
   DependencyMarker                 ::ClassTag 0x68
   M4MuxChannelDescr                ::ClassTag 0x69
-  ExtDescrTag :: (n :: Nat) (0x6A <= n, n <= 0xFE) =>  ClassTag n
-  OCIDescrTag :: (n :: Nat) (0x40 <= n, n <= 0x5F) =>  ClassTag n
+  ExtDescrTag :: (forall (n :: Nat) . (0x6A <= n, n <= 0xFE) =>  ClassTag n)
+  OCIDescrTag :: (forall (n :: Nat) . (0x40 <= n, n <= 0x5F) =>  ClassTag n)

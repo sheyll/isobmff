@@ -42,8 +42,8 @@ newtype TrackRun where
 instance IsBox TrackRun
 type instance BoxTypeSymbol TrackRun = "trun"
 
--- class MkTrackRunArgs (t :: IsA (TrackRunFlags sop fsp sdp ssp sfp sop)) where
---   data TrRunArgs (t :: IsA (TrackRunFlags sop fsp sdp ssp sfp sop))
+-- class MkTrackRunArgs (t :: To (TrackRunFlags sop fsp sdp ssp sfp sop)) where
+--   data TrRunArgs (t :: To (TrackRunFlags sop fsp sdp ssp sfp sop))
 
 data TrackRunFlags
   (dataOffsetPresent :: Bool)
@@ -54,9 +54,9 @@ data TrackRunFlags
   (sampleCompositionTimeOffsetPresent :: Bool)
 
 data TrackRunFlagsIso5
-  :: IsA (TrackRunFlags 'True 'False 'True 'True 'True 'False)
+  :: To (TrackRunFlags 'True 'False 'True 'True 'True 'False)
 
-type Header (t :: IsA (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
+type Header (t :: To (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
       "version"                   @: FieldU8  := 0 -- TODO allow version 1
   .+:                                Field 12 := 0
   .+: "sample-scto-present"       @: Flag     := sctop
@@ -74,7 +74,7 @@ type Header (t :: IsA (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
         ('BitRecordMember ("first-sample-flags" @: FieldU32))
 
 
-type Sample (t :: IsA (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
+type Sample (t :: To (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
       WhenR sdp ('BitRecordMember ("sample-duration" @: FieldU32))
   :+: WhenR ssp ('BitRecordMember ("sample-size"     @: FieldU32))
-  :+: WhenR sfp ('BitRecordMember ("sample-flags"    @: FieldU32 := 0x02000000)) -- TODO allow flags as in TrackExtends 
+  :+: WhenR sfp ('BitRecordMember ("sample-flags"    @: FieldU32 := 0x02000000)) -- TODO allow flags as in TrackExtends

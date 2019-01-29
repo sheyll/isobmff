@@ -20,10 +20,10 @@ type AudioConfigHeAac freq channels =
 -- | A minimalistic audio config without sync and error protection
 data AudioConfigAacMinimal
   :: AudioObjectTypeId
-  -> IsAn AudioSubConfig
-  -> IsAn (EnumOf SamplingFreqTable)
-  -> IsAn (EnumOf ChannelConfigTable)
-  -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
+  -> To AudioSubConfig
+  -> To (EnumOf SamplingFreqTable)
+  -> To (EnumOf ChannelConfigTable)
+  -> To (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
 type instance
   From (AudioConfigAacMinimal
@@ -37,11 +37,11 @@ type instance
 -- | A audio config with SBR signalled explicit and hierachical
 data AudioConfigSbrExplicitHierachical
   :: AudioObjectTypeId
-  -> IsAn AudioSubConfig
-  -> IsAn (EnumOf SamplingFreqTable)
-  -> IsAn (EnumOf ChannelConfigTable)
-  -> IsAn (EnumOf SamplingFreqTable) -- extension SamplingFrequency
-  -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
+  -> To AudioSubConfig
+  -> To (EnumOf SamplingFreqTable)
+  -> To (EnumOf ChannelConfigTable)
+  -> To (EnumOf SamplingFreqTable) -- extension SamplingFrequency
+  -> To (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
 type instance
      From
@@ -142,7 +142,7 @@ type AudioObjectTypeRec n =
   .+: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
 
 type family AudioObjectTypeField1 (n :: Nat)
-  :: IsA (BitRecordField ('MkFieldBits :: BitField (B 5) Nat 5)) where
+  :: To (BitRecordField ('MkFieldBits :: BitField (B 5) Nat 5)) where
   AudioObjectTypeField1 n =
     If (n <=? 30) (Field 5 := n) (Field 5 := 31)
 
@@ -270,13 +270,13 @@ channelConfigToEnum SinglePairPairPairLfe = MkEnumValue (Proxy @'SinglePairPairP
 
 data AudioSubConfig :: Type
 
-type family BitRecordOfAudioSubConfig (x :: IsA AudioSubConfig) :: BitRecord
+type family BitRecordOfAudioSubConfig (x :: To AudioSubConfig) :: BitRecord
 
 data GASpecificConfig
-  (frameLenFlag   :: IsA (FieldValue "frameLenFlag" Bool))
-  (coreCoderDelay :: Maybe (IsA (FieldValue "coreCoderDelay" Nat)))
-  (extension      :: IsA GASExtension)
-  :: IsA AudioSubConfig
+  (frameLenFlag   :: To (FieldValue "frameLenFlag" Bool))
+  (coreCoderDelay :: Maybe (To (FieldValue "coreCoderDelay" Nat)))
+  (extension      :: To GASExtension)
+  :: To AudioSubConfig
 
 type DefaultGASpecificConfig =
   GASpecificConfig (StaticFieldValue "frameLenFlag" 'False) 'Nothing MkGASExtension
@@ -295,7 +295,7 @@ type instance
 
 -- | TODO implment that GAS extensions
 data GASExtension
-data MkGASExtension :: IsA GASExtension
+data MkGASExtension :: To GASExtension
 
-type BitRecordOfGASExtension (x :: IsA GASExtension) =
+type BitRecordOfGASExtension (x :: To GASExtension) =
   'BitRecordMember ("has-gas-extension" @: Flag := 'False)

@@ -8,7 +8,7 @@ import           Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- * Static Expandable
 
-data StaticExpandableContent :: BitRecord -> IsA BitRecord
+data StaticExpandableContent :: BitRecord -> To BitRecord
 
 type StaticExpandableContentMaxBits = 32
 

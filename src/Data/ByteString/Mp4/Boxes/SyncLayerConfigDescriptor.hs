@@ -4,7 +4,7 @@ module Data.ByteString.Mp4.Boxes.SyncLayerConfigDescriptor where
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 
-data Mp4SyncLayerDescriptor :: IsA (Descriptor 'SLConfigDescr)
+data Mp4SyncLayerDescriptor :: To (Descriptor 'SLConfigDescr)
 
 -- | In the holy scripture, ISO-14496-14 section 3.1.2, it is written that there
 -- shall be restrictions on the elementary stream descriptor, in there it says:
@@ -13,7 +13,4 @@ data Mp4SyncLayerDescriptor :: IsA (Descriptor 'SLConfigDescr)
 -- this value is too much. The righteous one ever only uses __two__. Only a fool
 -- will use __257__.
 type instance From Mp4SyncLayerDescriptor =
-  'MkDescriptor ('BitRecordMember ("predefined" @: FieldU8 := 0x02))
-
-type instance ToDescriptor Mp4SyncLayerDescriptor =
   'MkDescriptor ('BitRecordMember ("predefined" @: FieldU8 := 0x02))

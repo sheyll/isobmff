@@ -16,9 +16,9 @@ import Data.Kind (type Type)
 -- | A record with a /size/ member, and a nested record that can be counted
 -- using 'SizeFieldValue'.
 data Sized
-  (sf :: IsA (BitRecordField (t :: BitField (rt :: Type) Nat (size :: Nat))))
+  (sf :: To (BitRecordField (t :: BitField (rt :: Type) Nat (size :: Nat))))
   (r :: BitRecord)
-  :: IsA BitRecord
+  :: To BitRecord
 type instance From (Sized sf r) =
    "size" @: sf := SizeFieldValue r .+: r
 
@@ -37,9 +37,9 @@ type Sized64 t = Sized FieldU64 t
 -- | A record with a /size/ member, and a nested field that can be counted
 -- using 'SizeFieldValue'.
 data SizedField
-  (sf :: IsA (BitRecordField (t :: BitField (rt :: Type) Nat (size :: Nat))))
-  (r :: IsA (BitRecordField (u :: BitField (rt' :: Type) (st' :: k0) (len0 :: Nat))))
-  :: IsA BitRecord
+  (sf :: To (BitRecordField (t :: BitField (rt :: Type) Nat (size :: Nat))))
+  (r :: To (BitRecordField (u :: BitField (rt' :: Type) (st' :: k0) (len0 :: Nat))))
+  :: To BitRecord
 type instance From (SizedField sf r) =
    "size" @: sf := SizeFieldValue r .+. r
 

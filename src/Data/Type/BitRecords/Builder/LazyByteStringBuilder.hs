@@ -258,7 +258,7 @@ instance forall a .
   bitStringBuilderHoley _ = addParameter (appendBitString . bitString 8 . fromIntegral . fromIntegral @Int8 @Word8)
 
 
-instance forall (f :: IsA (BitRecordField (t :: BitField rt Nat len))) (v :: Nat) a . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitStringBuilder (Proxy f) a ~ (rt -> a), Num rt) =>
+instance forall (f :: To (BitRecordField (t :: BitField rt Nat len))) (v :: Nat) a . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitStringBuilder (Proxy f) a ~ (rt -> a), Num rt) =>
   BitStringBuilderHoley (Proxy (f := v)) a where
   bitStringBuilderHoley _ = fillParameter (bitStringBuilderHoley (Proxy @f)) (fromIntegral (natVal (Proxy @v)))
 
@@ -273,7 +273,7 @@ instance forall v f a x . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitS
 
 -- ** 'BitRecord' instances
 
-instance forall (r :: IsA BitRecord) a . BitStringBuilderHoley (Proxy (From r)) a =>
+instance forall (r :: To BitRecord) a . BitStringBuilderHoley (Proxy (From r)) a =>
   BitStringBuilderHoley (Proxy r) a where
   type ToBitStringBuilder (Proxy r) a =
     ToBitStringBuilder (Proxy (From r)) a

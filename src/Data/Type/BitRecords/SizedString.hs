@@ -65,7 +65,7 @@ instance
     (str :: Symbol)
     (bytes :: Nat)
     (r :: Type)
-    (f :: IsA (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString size))) .
+    (f :: To (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString size))) .
       (KnownSymbol str)
     => BitStringBuilderHoley (Proxy (f := 'MkASizedString str bytes)) r
   where
