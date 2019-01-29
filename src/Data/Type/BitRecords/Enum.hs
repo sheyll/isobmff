@@ -24,7 +24,7 @@ data EnumOf enum where
     -> EnumOf enum
 
 type BitRecordOfEnum (e :: IsAn (EnumOf enum))
-  = (RenderEnumOf (Eval e) :: BitRecord)
+  = (RenderEnumOf (From e) :: BitRecord)
 
 type family RenderEnumOf (e :: EnumOf enum) :: BitRecord where
   RenderEnumOf ('MkEnumOf mainField mainFieldVal extra) =
@@ -51,7 +51,7 @@ data ExtEnum (enum :: Type)
 -- | Create an 'EnumOf' that sets an enum to a static value.
 data SetEnum (l :: Symbol) (ef :: IsAn (EnumField enum size)) (v :: enum) :: IsAn (EnumOf enum)
 
-type instance Eval (SetEnum (l :: Symbol) (ei :: IsAn (EnumField enum size)) value) =
+type instance From (SetEnum (l :: Symbol) (ei :: IsAn (EnumField enum size)) value) =
   'MkEnumOf
      ei
      (StaticFieldValue l value)
@@ -62,7 +62,7 @@ data EnumParam
      (label :: Symbol)
      (ef :: IsAn (EnumField (enum :: Type) (size :: Nat)))
      :: IsAn (EnumOf enum)
-type instance Eval (EnumParam label (ei :: IsAn (EnumField enum size))) =
+type instance From (EnumParam label (ei :: IsAn (EnumField enum size))) =
   'MkEnumOf
      ei
      (RuntimeFieldValue label)
@@ -72,14 +72,14 @@ type instance Eval (EnumParam label (ei :: IsAn (EnumField enum size))) =
 data SetEnumAlt (l :: Symbol) (ef :: IsAn (EnumField (enum :: Type) (size :: Nat))) (v :: k)
   :: IsAn (EnumOf enum)
 
-type instance Eval (SetEnumAlt (l :: Symbol) (ExtEnum enum size extInd extField) value) =
+type instance From (SetEnumAlt (l :: Symbol) (ExtEnum enum size extInd extField) value) =
   -- TODO maybe enrich the demoteRep type of 'MkField??
   'MkEnumOf
      (ExtEnum enum size extInd extField)
      (StaticFieldValue l extInd)
      ('BitRecordMember (extField := value))
 
-type instance Eval (SetEnumAlt (l :: Symbol) (FixedEnum enum size) value) =
+type instance From (SetEnumAlt (l :: Symbol) (FixedEnum enum size) value) =
   TypeError ('Text "Cannot assign an 'extended' value to the 'FixedEnum' "
              ':<>: 'ShowType enum)
 
@@ -89,13 +89,13 @@ data EnumParamAlt
   (ef :: IsAn (EnumField (enum :: Type) (size :: Nat)))
   :: IsAn (EnumOf enum)
 
-type instance Eval (EnumParamAlt label (ExtEnum enum size extInd extField)) =
+type instance From (EnumParamAlt label (ExtEnum enum size extInd extField)) =
   'MkEnumOf
   (ExtEnum enum size extInd extField)
   (StaticFieldValue label extInd)
   ('BitRecordMember (extField :~ RuntimeFieldValue label))
 
-type instance Eval (EnumParamAlt label (FixedEnum enum size)) =
+type instance From (EnumParamAlt label (FixedEnum enum size)) =
   TypeError ('Text "Cannot assign an extension value to the FixedEnum "
              ':<>: 'ShowType enum)
 

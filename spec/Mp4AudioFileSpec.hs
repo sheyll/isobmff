@@ -16,7 +16,7 @@ spec =
      describe "Mp4AacAudioDecoderConfigDescriptor" $ do
        it "can be pretty printed" $
          showRecord (Proxy @(BitRecordOfDescriptor
-                              $~ (Eval (Mp4AacAudioDecoderConfigDescriptor
+                              $~ (From (Mp4AacAudioDecoderConfigDescriptor
                                         (AudioConfigAacLc
                                          (EnumParam "samplingFreq" SamplingFreq)
                                           (EnumParam "channelConfig" ChannelConfig))))))
@@ -28,7 +28,7 @@ spec =
          let actual =
               bitStringPrinter
                 (Proxy @(BitRecordOfDescriptor
-                               $~ Eval  (Mp4AacAudioDecoderConfigDescriptor
+                               $~ From  (Mp4AacAudioDecoderConfigDescriptor
                                          (AudioConfigAacLc
                                           (EnumParam "samplingFreq" SamplingFreq)
                                            (EnumParam "channelConfig" ChannelConfig)))))
@@ -42,18 +42,18 @@ spec =
          in actual `shouldBe` expexted
      describe "Mp4AacLcEsDescriptor" $
        do it "can be transformed to binary output" $
-            bitStringPrinter (Proxy @(BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor))
+            bitStringPrinter (Proxy @(BitRecordOfDescriptor $~ From Mp4AacLcEsDescriptor))
                              False 0 0 0
                              (MkEnumValue (Proxy @'SF48000))
                              (MkEnumValue (Proxy @'SingleChannel))
             `shouldBe`
               "<< 03 19 00 01 00 04 11 40 15 00 00 00 00 00 00 00 00 00 00 00 05 02 11 88 06 01 02 >>"
           it "can be pretty printed" $
-            showRecord (Proxy @(BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor))
+            showRecord (Proxy @(BitRecordOfDescriptor $~ From Mp4AacLcEsDescriptor))
             `shouldStartWith` "U8 := hex: 03 (dec: 3)\n"
      describe "Mp4HeAacEsDescriptor" $
        do it "can be transformed to binary output" $
-            bitStringPrinter (Proxy @(BitRecordOfDescriptor $~ Eval Mp4HeAacEsDescriptor))
+            bitStringPrinter (Proxy @(BitRecordOfDescriptor $~ From Mp4HeAacEsDescriptor))
                              False 0 0 0
                              (MkEnumValue (Proxy @'SF48000))
                              (MkEnumValue (Proxy @'SingleChannel))

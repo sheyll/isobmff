@@ -26,7 +26,7 @@ data AudioConfigAacMinimal
   -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
 type instance
-  Eval (AudioConfigAacMinimal
+  From (AudioConfigAacMinimal
         aoId
         subCfg
         freq
@@ -44,7 +44,7 @@ data AudioConfigSbrExplicitHierachical
   -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
 type instance
-     Eval
+     From
        (AudioConfigSbrExplicitHierachical aoId subCfg freq channels
           extFreq)
      =
@@ -281,7 +281,7 @@ data GASpecificConfig
 type DefaultGASpecificConfig =
   GASpecificConfig (StaticFieldValue "frameLenFlag" 'False) 'Nothing MkGASExtension
 
-type instance Eval (GASpecificConfig fl cd ext)
+type instance From (GASpecificConfig fl cd ext)
   = TypeError ('Text "AudioSubConfig is abstract!")
 
 

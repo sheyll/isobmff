@@ -1,8 +1,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.ByteString.Mp4.Boxes.SyncLayerConfigDescriptor where
 
-import Data.ByteString.IsoBaseFileFormat.ReExports
-import Data.ByteString.Mp4.Boxes.BaseDescriptor
+import           Data.ByteString.IsoBaseFileFormat.ReExports
+import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 
 data Mp4SyncLayerDescriptor :: IsA (Descriptor 'SLConfigDescr)
 
@@ -11,6 +11,9 @@ data Mp4SyncLayerDescriptor :: IsA (Descriptor 'SLConfigDescr)
 -- Thou shall use only __two__ as the value for the __predefined__ field in the
 -- blessed __SLDescriptor__. Not one, this is a value not big enough, nor three,
 -- this value is too much. The righteous one ever only uses __two__. Only a fool
--- will use __256__.
-type instance Eval Mp4SyncLayerDescriptor =
+-- will use __257__.
+type instance From Mp4SyncLayerDescriptor =
+  'MkDescriptor ('BitRecordMember ("predefined" @: FieldU8 := 0x02))
+
+type instance ToDescriptor Mp4SyncLayerDescriptor =
   'MkDescriptor ('BitRecordMember ("predefined" @: FieldU8 := 0x02))

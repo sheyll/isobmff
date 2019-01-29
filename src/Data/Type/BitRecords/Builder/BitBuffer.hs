@@ -2,7 +2,6 @@
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 module Data.Type.BitRecords.Builder.BitBuffer
     ( type BitStringMaxLength
-    , type ModuloBitStringMaxLength
     , bitStringMaxLength
     , bitStringMaxLengthBytes
     , BitString()
@@ -33,13 +32,9 @@ import           GHC.TypeLits
 -- | The maximum number of bits a 'BitBuffer' can hold.
 type BitStringMaxLength = 64
 
--- | Calculate the modulus of a number and the 'BitStringMaxLength'.
-type family ModuloBitStringMaxLength (len :: Nat) :: Nat where
-        ModuloBitStringMaxLength len = len `Mod` BitStringMaxLength
-
 -- | The maximum number of bits a 'BitBuffer' can hold.
-bitStringMaxLength :: Num a => a
-bitStringMaxLength = 64
+bitStringMaxLength :: Int
+bitStringMaxLength = 64 -- fromInteger (natVal (Proxy :: Proxy BitStringMaxLength))
 
 -- | The maximum number of bytes a 'BitBuffer' can hold.
 bitStringMaxLengthBytes :: Word64

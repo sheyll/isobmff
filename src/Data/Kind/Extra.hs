@@ -1,12 +1,34 @@
 {-# LANGUAGE UndecidableInstances #-}
--- | Kind-level utilities to guide and simplify programming at the type level
+
+-- / Utilities to provide better error messages
+--
+-- When dealing with type level programming in Haskell, especially when involving
+-- undecidable instances, one is often confronted with irritating compiler
+-- behaviour. This module shall mitigate the problems.
+--
+-- A group of types that all 'From' into the same type. This
+-- is an /open/ and /extensible/ alternative to defining an algebraic data type
+-- and using the promoted constructors. 'A' goes hand-in-hand with 'IsA' for
+-- better readability.
+--
+-- For example:
+--
+-- @
+-- data PrettyPrinter c where
+--   RenderText :: Symbol -> PrettyPrinter Symbol
+--   WithColor :: Color -> PrettyPrinter c -> PrettyPrinter c
+--
+-- data Color = Black | White
+--
+-- data ColoredText :: Color -> Symbol -> 'IsA' (PrettyPrinter Symbol)
+--
+-- type instance 'From' (ColoredText c txt) = 'WithColor c ('RenderText txt)
+-- @
 module Data.Kind.Extra
-  ( type A(..)
-  , type IsA
+  ( type IsA
   , type IsAn
-  , type Return
-  , type Pure
-  , type Eval
+  , type Konst
+  , type From
   , type (:->)
   , type Id
   , type Apply
@@ -28,44 +50,21 @@ module Data.Kind.Extra
 
 import Data.Kind (type Type)
 
--- * Open Promoted Types
-
--- | A group of types that all 'Eval' into the same type. This
--- is an /open/ and /extensible/ alternative to defining an algebraic data type
--- and using the promoted constructors. 'A' goes hand-in-hand with 'IsA' for
--- better readability.
---
--- For example:
---
--- @
--- data PrettyPrinter c where
---   RenderText :: Symbol -> PrettyPrinter Symbol
---   WithColor :: Color -> PrettyPrinter c -> PrettyPrinter c
---
--- data Color = Black | White
---
--- data ColoredText :: Color -> Symbol -> 'IsA' (PrettyPrinter Symbol)
---
--- type instance 'Eval' (ColoredText c txt) = 'WithColor c ('RenderText txt)
--- @
-data A :: forall foo . foo -> Type where
-  MkA :: A foo
-
 -- | Type alias for 'A' such that @data Point2 x y :: A Vec2 -> Type@ becomes
 -- @data Point2 x y :: IsA Vec2@
-type IsA (foo :: k) = (A foo -> Type :: Type)
+type IsA foo = (foo -> Type :: Type)
 
 -- | An alias to 'IsA'
-type IsAn (oo :: k) = (IsA oo :: Type)
+type IsAn oo = (IsA oo :: Type)
 
 -- | An open type family to turn /symbolic/ type representations created with
 -- 'A' or 'IsA' into the actual types.
-type family Eval (t :: A foo -> Type) :: foo
+type family From (t :: foo -> Type) :: foo
 
--- | A type @foo@, @'IsA' foo@.
-data Pure (f :: o) :: IsAn o
-type instance Eval (Pure f) = f
-type Return f = Pure f
+-- | A @Konst foo@, @'IsA' foo@.
+data Konst (a :: k) (b :: k)
+
+type instance From (Konst f) = f
 
 -- | A symbolic type-level function.
 data (:->) foo bar
@@ -82,7 +81,7 @@ data Id :: IsA (foo :-> foo)
 type instance Id $~ x = x
 
 -- | Symbolic function application
-type (^*^) (f :: IsA (foo :-> bar)) (x :: IsA foo) = f $~ (Eval x)
+type (^*^) (f :: IsA (foo :-> bar)) (x :: IsA foo) = f $~ (From x)
 infixl 0 ^*^
 
 -- | Compose functions
@@ -90,29 +89,29 @@ data (:>>>:) :: IsA (good :-> better) -> IsA (better :-> best) -> IsA (good :-> 
 infixl 1 :>>>:
 type instance (f :>>>: g) $~ x = g $~ (f $~ x)
 
--- | Eval Input & Compose
+-- | From Input & Compose
 data (:^>>>:) :: IsA (good :-> better) -> IsA (better :-> best) -> IsA (IsA good :-> best)
 infixl 1 :^>>>:
-type instance (f :^>>>: g) $~ x = g $~ (f $~ Eval x)
+type instance (f :^>>>: g) $~ x = g $~ (f $~ From x)
 
--- | Compose and 'Return'
+-- | Compose and 'Konst'
 data (:>>>^:) :: IsA (good :-> better) -> IsA (better :-> best) -> IsA (good :-> IsA best)
 infixl 1 :>>>^:
-type instance (f :>>>^: g) $~ x = Return (g $~ (f $~ x))
+type instance (f :>>>^: g) $~ x = Konst (g $~ (f $~ x))
 
--- | Eval compose and return
+-- | From compose and return
 data (:^>>>^:) :: IsA (good :-> better) -> IsA (better :-> best) -> IsA (IsA good :-> IsA best)
 infixl 1 :^>>>^:
-type instance (f :^>>>^: g) $~ x = Return (g $~ (f $~ Eval x))
+type instance (f :^>>>^: g) $~ x = Konst (g $~ (f $~ From x))
 
--- | A function that applies 'Eval'
+-- | A function that applies 'From'
 data Extract :: IsA (IsA x :-> x)
-type instance Extract $~ x = Eval x
+type instance Extract $~ x = From x
 
--- | Eval and ApplyCompose functions
+-- | From and ApplyCompose functions
 data (:>>=:) :: IsA foo -> IsA (foo :-> IsA bar) -> IsA bar
 infixl 1 :>>=:
-type instance Eval (x :>>=: f) = Eval (f $~ Eval x)
+type instance From (x :>>=: f) = From (f $~ From x)
 
 -- | Either use the value from @Just@ or return a fallback value(types(kinds))
 data Optional :: IsA t -> IsA (s :-> IsA t) -> IsA (Maybe s :-> IsA t)

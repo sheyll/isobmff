@@ -16,7 +16,7 @@ data DecoderConfigDescriptor
           -> [IsA (Descriptor 'ProfileLevelIndicationIndexDescr)]
           -> IsA (Descriptor 'DecoderConfigDescr)
 
-type instance Eval (DecoderConfigDescriptor ot st di ps) =
+type instance From (DecoderConfigDescriptor ot st di ps) =
   'MkDescriptor (DecoderConfigDescriptorBody ot st di ps)
 
 type family
@@ -34,11 +34,11 @@ type family
               .+: "bufferSizeDB" @: Field 24
               .+: "maxBitrate"   @: FieldU32
               .+: "avgBitrate"   @: FieldU32
-              .+: Eval (BitRecordOfList
+              .+: From (BitRecordOfList
                         (DescriptorOfDecoderSpecificInfo
                          :^>>>: BitRecordOfDescriptor)
                         (di ?:: LengthIn 0 1))
-              :+: Eval (BitRecordOfList
+              :+: From (BitRecordOfList
                         (Extract :>>>: BitRecordOfDescriptor)
                         (ps ?:: LengthIn 0 255))
 
@@ -48,6 +48,6 @@ data ProfileLevelIndicationIndexDescriptor
   :: IsA (FieldValue "profileLevelIndicationIndex" Nat)
   -> IsA (Descriptor 'ProfileLevelIndicationIndexDescr)
 
-type instance Eval (ProfileLevelIndicationIndexDescriptor val) =
+type instance From (ProfileLevelIndicationIndexDescriptor val) =
   'MkDescriptor
   ('BitRecordMember (FieldU8 :~ val))

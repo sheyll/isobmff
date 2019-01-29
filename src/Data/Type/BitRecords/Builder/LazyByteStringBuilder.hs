@@ -273,11 +273,11 @@ instance forall v f a x . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitS
 
 -- ** 'BitRecord' instances
 
-instance forall (r :: IsA BitRecord) a . BitStringBuilderHoley (Proxy (Eval r)) a =>
+instance forall (r :: IsA BitRecord) a . BitStringBuilderHoley (Proxy (From r)) a =>
   BitStringBuilderHoley (Proxy r) a where
   type ToBitStringBuilder (Proxy r) a =
-    ToBitStringBuilder (Proxy (Eval r)) a
-  bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @(Eval r))
+    ToBitStringBuilder (Proxy (From r)) a
+  bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @(From r))
 
 -- *** 'BitRecordMember'
 

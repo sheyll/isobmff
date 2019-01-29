@@ -1,15 +1,15 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.Type.BitRecords.Core where
 
-import Data.Int
-import Data.Kind (Type)
-import Data.Kind.Extra
-import Data.Proxy
-import Data.Type.Pretty
-import Data.Word
-import Data.Bits
-import GHC.TypeLits
-import Text.Printf
+import           Data.Int
+import           Data.Kind                      ( Type )
+import           Data.Kind.Extra
+import           Data.Proxy
+import           Data.Type.Pretty
+import           Data.Word
+import           Data.Bits
+import           GHC.TypeLits
+import           Text.Printf
 
 -- * Bit-Records
 
@@ -17,9 +17,9 @@ import Text.Printf
 
 -- | 'BitRecordField's assembly
 data BitRecord where
-  EmptyBitRecord     :: BitRecord
-  BitRecordMember    :: IsA (BitRecordField t) -> BitRecord
-  BitRecordAppend    :: BitRecord -> BitRecord -> BitRecord
+  EmptyBitRecord     ::BitRecord
+  BitRecordMember    ::IsA (BitRecordField t) -> BitRecord
+  BitRecordAppend    ::BitRecord -> BitRecord -> BitRecord
   -- TODO  MissingBitRecord          :: ErrorMessage     -> BitRecord
 
 -- | A conditional 'BitRecord'
@@ -43,12 +43,15 @@ type family BitRecordMemberCount (b :: BitRecord) :: Nat where
 
 -- | Get the size of the record.
 getRecordSizeFromProxy
-  :: forall px (rec :: BitRecord) . KnownNat (BitRecordSize rec) => px rec -> Integer
+  :: forall px (rec :: BitRecord)
+   . KnownNat (BitRecordSize rec)
+  => px rec
+  -> Integer
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
-type OptionalRecordOf (f :: IsA (s :-> IsA BitRecord)) (x :: Maybe s) =
-  (Optional (Pure 'EmptyBitRecord) f $~ x :: IsA BitRecord)
+type OptionalRecordOf (f :: IsA (s :-> IsA BitRecord)) (x :: Maybe s)
+  = (Optional (Konst 'EmptyBitRecord) f $~ x :: IsA BitRecord)
 
 -- ** Record composition
 
@@ -56,13 +59,13 @@ type OptionalRecordOf (f :: IsA (s :-> IsA BitRecord)) (x :: Maybe s) =
 -- not of type 'BitRecord' they will be converted.
 data (:+^) (l :: BitRecord) (r :: IsA BitRecord) :: IsA BitRecord
 infixl 3 :+^
-type instance Eval (l :+^ r) = l `Append` Eval r
+type instance From (l :+^ r) = l `Append` From r
 
 -- | Combine two 'BitRecord's to form a new 'BitRecord'. If the parameters are
 -- not of type 'BitRecord' they will be converted.
 data (:^+) (l :: IsA BitRecord) (r :: BitRecord) :: IsA BitRecord
 infixl 3 :^+
-type instance Eval (l :^+ r) = Eval l `Append` r
+type instance From (l :^+ r) = From l `Append` r
 
 -- | Combine two 'BitRecord's to form a new 'BitRecord'. If the parameters are
 -- not of type 'BitRecord' they will be converted.
@@ -75,22 +78,19 @@ type family Append (l :: BitRecord) (r :: BitRecord) :: BitRecord where
   Append l r = 'BitRecordAppend l r
 
 -- | Append a 'BitRecord' and a 'BitRecordField'
-type (:+.) (r :: BitRecord)
-           (f :: IsA (BitRecordField t1))
-           = Append r ('BitRecordMember f)
+type (:+.) (r :: BitRecord) (f :: IsA (BitRecordField t1))
+  = Append r ( 'BitRecordMember f)
 infixl 6 :+.
 
 -- | Append a 'BitRecordField' and a 'BitRecord'
-type (.+:) (f :: IsA (BitRecordField t1))
-           (r :: BitRecord)
-  = Append ('BitRecordMember f) r
+type (.+:) (f :: IsA (BitRecordField t1)) (r :: BitRecord)
+  = Append ( 'BitRecordMember f) r
 infixr 6 .+:
 
 -- | Append a 'BitRecordField' and a 'BitRecordField' forming a 'BitRecord' with
 -- two members.
-type (.+.) (l :: IsA (BitRecordField t1))
-           (r :: IsA (BitRecordField t2))
-           = Append ('BitRecordMember l) ('BitRecordMember r)
+type (.+.) (l :: IsA (BitRecordField t1)) (r :: IsA (BitRecordField t2))
+  = Append ( 'BitRecordMember l) ( 'BitRecordMember r)
 infixr 6 .+.
 
 -- | Set a field to either a static, compile time, value or a dynamic, runtime value.
@@ -109,7 +109,7 @@ type family (:~?)
   (value :: Maybe (IsA (FieldValue (label :: Symbol) st)))
   :: IsA BitRecord where
   fld :~? ('Just v) = RecordField (fld :~ v)
-  fld :~? 'Nothing  = Pure 'EmptyBitRecord
+  fld :~? 'Nothing  = Konst 'EmptyBitRecord
 infixl 7 :~?
 
 -- | Like ':~' but for a 'Maybe' parameter. In case of 'Just' it behaves like ':~'
@@ -138,7 +138,7 @@ data RecArray :: BitRecord -> Nat -> IsA BitRecord
 type r ^^ n = RecArray r n
 infixl 5 ^^
 
-type instance Eval (RecArray (r :: BitRecord) n ) = RecArrayToBitRecord r n
+type instance From (RecArray (r :: BitRecord) n ) = RecArrayToBitRecord r n
 
 -- | Repeat a bit record @n@ times.
 type family RecArrayToBitRecord (r :: BitRecord) (n :: Nat) :: BitRecord where
@@ -155,7 +155,7 @@ data
       (xs :: [foo])
       :: IsA BitRecord
 
-type instance Eval (BitRecordOfList f xs) =
+type instance From (BitRecordOfList f xs) =
   FoldMap BitRecordAppendFun 'EmptyBitRecord f xs
 
 type BitRecordAppendFun = Fun1 BitRecordAppendFun_
@@ -166,8 +166,8 @@ type instance (BitRecordAppendFun_ l) $~ r = Append l r
 
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
 data OptionalRecord :: Maybe BitRecord -> IsA BitRecord
-type instance Eval (OptionalRecord ('Just t)) = t
-type instance Eval (OptionalRecord 'Nothing)  = 'EmptyBitRecord
+type instance From (OptionalRecord ('Just t)) = t
+type instance From (OptionalRecord 'Nothing)  = 'EmptyBitRecord
 
 -- ** Field ADT
 
@@ -187,8 +187,8 @@ data MkField t :: IsA (BitRecordField t)
 data LabelF :: Symbol -> IsA (BitRecordField t) -> IsA (BitRecordField t)
 
 -- | A field with a label assigned to it.
-type
-  (l :: Symbol) @:(f :: IsA (BitRecordField (t :: BitField rt (st :: stk) size)))
+type (l :: Symbol) @: (f :: IsA
+  (BitRecordField (t :: BitField rt (st :: stk) size)))
   = (LabelF l f :: IsA (BitRecordField t))
 infixr 8 @:
 
@@ -213,27 +213,27 @@ data BitField
      (staticRep :: k)
      (bitCount :: Nat)
   where
-    MkFieldFlag    :: BitField Bool Bool 1
-    MkFieldBits    :: forall (n :: Nat) . BitField (B n) Nat n
-    MkFieldBitsXXL :: forall (n :: Nat) . BitField Integer Nat n
-    MkFieldU8      :: BitField Word8 Nat 8
-    MkFieldU16     :: BitField Word16 Nat 16
-    MkFieldU32     :: BitField Word32 Nat 32
-    MkFieldU64     :: BitField Word64 Nat 64
-    MkFieldI8      :: BitField Int8  SignedNat 8
-    MkFieldI16     :: BitField Int16 SignedNat 16
-    MkFieldI32     :: BitField Int32 SignedNat 32
-    MkFieldI64     :: BitField Int64 SignedNat 64
+    MkFieldFlag    ::BitField Bool Bool 1
+    MkFieldBits    ::(n :: Nat) BitField (B n) Nat n
+    MkFieldBitsXXL ::(n :: Nat) BitField Integer Nat n
+    MkFieldU8      ::BitField Word8 Nat 8
+    MkFieldU16     ::BitField Word16 Nat 16
+    MkFieldU32     ::BitField Word32 Nat 32
+    MkFieldU64     ::BitField Word64 Nat 64
+    MkFieldI8      ::BitField Int8  SignedNat 8
+    MkFieldI16     ::BitField Int16 SignedNat 16
+    MkFieldI32     ::BitField Int32 SignedNat 32
+    MkFieldI64     ::BitField Int64 SignedNat 64
     -- TODO refactor this MkFieldCustom, it caused a lot of trouble!
-    MkFieldCustom  :: BitField rt st n
+    MkFieldCustom  ::BitField rt st n
 
-type Flag     = MkField 'MkFieldFlag
-type Field n  = MkField ('MkFieldBits :: BitField (B n) Nat n)
-type FieldU8  = MkField 'MkFieldU8
+type Flag = MkField 'MkFieldFlag
+type Field n = MkField ( 'MkFieldBits :: BitField (B n) Nat n)
+type FieldU8 = MkField 'MkFieldU8
 type FieldU16 = MkField 'MkFieldU16
 type FieldU32 = MkField 'MkFieldU32
 type FieldU64 = MkField 'MkFieldU64
-type FieldI8  = MkField 'MkFieldI8
+type FieldI8 = MkField 'MkFieldI8
 type FieldI16 = MkField 'MkFieldI16
 type FieldI32 = MkField 'MkFieldI32
 type FieldI64 = MkField 'MkFieldI64
@@ -249,8 +249,8 @@ instance (PrintfArg Word64, n <= 64) => PrintfArg (B n) where
 
 -- | A signed field value.
 data SignedNat where
-  PositiveNat :: Nat -> SignedNat
-  NegativeNat :: Nat -> SignedNat
+  PositiveNat ::Nat -> SignedNat
+  NegativeNat ::Nat -> SignedNat
 
 -- *** Composed Fields
 
@@ -266,12 +266,12 @@ type family FlagNothing  (a :: Maybe (v :: Type)) :: IsA (BitRecordField 'MkFiel
 
 -- | An optional field in a bit record
 data MaybeField :: Maybe (IsA (BitRecordField t)) -> IsA BitRecord
-type instance Eval (MaybeField ('Just  fld)) = 'BitRecordMember fld
-type instance Eval (MaybeField 'Nothing) = 'EmptyBitRecord
+type instance From (MaybeField ('Just  fld)) = 'BitRecordMember fld
+type instance From (MaybeField 'Nothing) = 'EmptyBitRecord
 
 -- | A 'BitRecordField' can be used as 'BitRecordMember'
 data RecordField :: IsA (BitRecordField t) -> IsA BitRecord
-type instance Eval (RecordField f) = 'BitRecordMember f
+type instance From (RecordField f) = 'BitRecordMember f
 
 -- | Calculate the size as a number of bits from a 'BitRecordField'
 type family BitRecordFieldSize (x :: IsA (BitRecordField t)) where
@@ -283,15 +283,19 @@ type family BitRecordFieldSize (x :: IsA (BitRecordField t)) where
 -- | Render @rec@ to a pretty, human readable form. Internally this is a wrapper
 -- around 'ptShow' using 'PrettyRecord'.
 showARecord
-  :: forall proxy (rec :: IsA BitRecord) . PrettyTypeShow (PrettyRecord (Eval rec))
-  => proxy rec -> String
-showARecord _ = showPretty (Proxy :: Proxy (PrettyRecord (Eval rec)))
+  :: forall proxy (rec :: IsA BitRecord)
+   . PrettyTypeShow (PrettyRecord (From rec))
+  => proxy rec
+  -> String
+showARecord _ = showPretty (Proxy :: Proxy (PrettyRecord (From rec)))
 
 -- | Render @rec@ to a pretty, human readable form. Internally this is a wrapper
 -- around 'ptShow' using 'PrettyRecord'.
 showRecord
-  :: forall proxy (rec :: BitRecord) . PrettyTypeShow (PrettyRecord rec)
-  => proxy rec -> String
+  :: forall proxy (rec :: BitRecord)
+   . PrettyTypeShow (PrettyRecord rec)
+  => proxy rec
+  -> String
 showRecord _ = showPretty (Proxy :: Proxy (PrettyRecord rec))
 
 type instance ToPretty (rec :: BitRecord) = PrettyRecord rec

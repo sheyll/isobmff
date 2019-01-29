@@ -51,7 +51,7 @@ basicsSpec = do
       bitStringPrinter (Proxy :: Proxy (RecordField (Flag := 'False))) `shouldBe` "<< 00 >>"
     describe "@: labelled fields"  $ do
       it "writes them ..." $
-        let fld = Proxy @(Eval (RecordField ( "foo" @: FlagJust 'Nothing  )))
+        let fld = Proxy @(From (RecordField ( "foo" @: FlagJust 'Nothing  )))
         in bitStringPrinter fld `shouldBe` "<< 00 >>"
     describe "FlagJust" $ do
       it "writes a single bit '1' for a 'Just ...' parameter" $
@@ -106,9 +106,9 @@ arraySpec =
 
               "The record size works"
               ~~~~~~~~~~~~~~~~~~~~~~~~
-                  1 `ShouldBe` BitRecordSize (Eval (RecArray ('BitRecordMember Flag) 1))
-              -* 91 `ShouldBe` BitRecordSize (Eval (("foo" @: Flag .+. FieldU8) ^^ 10) :+. Flag)
-              -* 91 `ShouldBe` BitRecordSize (Eval (RecArray ("foo" @: Flag .+. FieldU8) 10) :+. Flag)
+                  1 `ShouldBe` BitRecordSize (From (RecArray ('BitRecordMember Flag) 1))
+              -* 91 `ShouldBe` BitRecordSize (From (("foo" @: Flag .+. FieldU8) ^^ 10) :+. Flag)
+              -* 91 `ShouldBe` BitRecordSize (From (RecArray ("foo" @: Flag .+. FieldU8) 10) :+. Flag)
             checkArrayRec = Valid
         runIO $ print checkArrayRec
       describe "showRecord" $
@@ -133,14 +133,14 @@ sizedSpec =
             "SizedString"
             ~~~~~~~~~~~~~~~
                 88 `ShouldBe` BitRecordFieldSize [utf8|Hello World|]
-            -* 104 `ShouldBe` BitRecordSize (Eval (RecordField [utf8|Heλλo World|]))
+            -* 104 `ShouldBe` BitRecordSize (From (RecordField [utf8|Heλλo World|]))
 
             -/-
 
             "Sized BitRecord Members"
             ~~~~~~~~~~~~~~~~~~~~~~~~
-                8 `ShouldBe` BitRecordSize (Eval (Sized8 'EmptyBitRecord))
-            -*  9 `ShouldBe` BitRecordSize (Eval (Sized8 ('BitRecordMember Flag)))
+                8 `ShouldBe` BitRecordSize (From (Sized8 'EmptyBitRecord))
+            -*  9 `ShouldBe` BitRecordSize (From (Sized8 ('BitRecordMember Flag)))
             -*  0 `ShouldBe` SizeFieldValue 'EmptyBitRecord
             -*  1 `ShouldBe` SizeFieldValue ('BitRecordMember Flag)
 
@@ -148,7 +148,7 @@ sizedSpec =
 
             "SizedField"
             ~~~~~~~~~~~~
-                9 `ShouldBe` BitRecordSize (Eval (SizedField8 Flag))
+                9 `ShouldBe` BitRecordSize (From (SizedField8 Flag))
             -*  1 `ShouldBe` SizeFieldValue  Flag
 
             -- TODO add more Sized tests, especially for SizedField
