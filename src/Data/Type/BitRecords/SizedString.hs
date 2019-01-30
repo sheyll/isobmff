@@ -40,7 +40,7 @@ data ASizedString where
   MkASizedString :: Symbol -> Nat -> ASizedString
 
 type instance
-     SizeOf ('MkASizedString str byteCount) = byteCount
+     SizeInBytes ('MkASizedString str byteCount) = byteCount
 
 type instance
      ToPretty ASizedString = PutStr "utf-8"

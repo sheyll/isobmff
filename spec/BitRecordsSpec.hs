@@ -141,15 +141,15 @@ sizedSpec =
             ~~~~~~~~~~~~~~~~~~~~~~~~
                 8 `ShouldBe` BitRecordSize (From (Sized8 'EmptyBitRecord))
             -*  9 `ShouldBe` BitRecordSize (From (Sized8 ('BitRecordMember Flag)))
-            -*  0 `ShouldBe` SizeOf 'EmptyBitRecord
-            -*  1 `ShouldBe` SizeOf ('BitRecordMember Flag)
+            -*  0 `ShouldBe` SizeInBytes 'EmptyBitRecord
+            -*  1 `ShouldBe` SizeInBytes ('BitRecordMember Flag)
 
             -/-
 
             "SizedField"
             ~~~~~~~~~~~~
                 9 `ShouldBe` BitRecordSize (From (SizedField8 Flag))
-            -*  1 `ShouldBe` SizeOf  Flag
+            -*  1 `ShouldBe` SizeInBytes  Flag
 
             -- TODO add more Sized tests, especially for SizedField
           checkSized = Valid

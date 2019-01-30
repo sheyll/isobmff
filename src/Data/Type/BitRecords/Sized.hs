@@ -2,8 +2,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.Type.BitRecords.Sized
   ( type Sized, type Sized8, type Sized16, Sized32, type Sized64
-  , type SizedField, type SizedField8, type SizedField16, type SizedField32, type SizedField64
-  , type SizeOf)
+  , type SizedField, type SizedField8, type SizedField16, type SizedField32, type SizedField64)
   where
 
 import Data.Type.Pretty
@@ -14,13 +13,13 @@ import Data.Kind.Extra
 import Data.Kind (type Type)
 
 -- | A record with a /size/ member, and a nested record that can be counted
--- using 'SizeOf'.
+-- using 'SizeInBytes'.
 data Sized
   (sf :: To (BitRecordField (t :: BitField (rt :: Type) Nat (size :: Nat))))
   (r :: BitRecord)
   :: To BitRecord
 type instance From (Sized sf r) =
-   "size" @: sf := SizeOf r .+: r
+   "size" @: sf := SizeInBytes r .+: r
 
 -- | A convenient alias for a 'Sized' with an 'FieldU8' size field.
 type Sized8 t = Sized FieldU8 t
@@ -29,22 +28,25 @@ type Sized8 t = Sized FieldU8 t
 type Sized16 t = Sized FieldU16 t
 
 -- | A convenient alias for a 'Sized' with an 'FieldU32' size field.
-data Sized32 :: To BitRecord -> To BitRecord
+data Sized32 :: To a -> To BitRecord
 
-type instance From (Sized32 r) =
-  'RecordField ("size" @:: Konst FieldU32 :=. SizeOf (From r)) :+: From r
+type instance From (Sized32 (r :: To BitRecord)) =
+  'RecordField ("size" @:: Konst FieldU32 :=. SizeInBytes (From r)) :+: From r
+
+type instance From (Sized32 (r :: To (BitField sr st sz))) =
+  'RecordField ("size" @:: Konst FieldU32 :=. SizeInBytes (From r)) :+: 'RecordField r
 
 -- | A convenient alias for a 'Sized' with an 'FieldU64' size field.
 type Sized64 t = Sized FieldU64 t
 
 -- | A record with a /size/ member, and a nested field that can be counted
--- using 'SizeOf'.
+-- using 'SizeInBytes'.
 data SizedField
   (sf :: To (BitRecordField (t :: BitField (rt :: Type) Nat (size :: Nat))))
   (r :: To (BitRecordField (u :: BitField (rt' :: Type) (st' :: k0) (len0 :: Nat))))
   :: To BitRecord
 type instance From (SizedField sf r) =
-   "size" @: sf := SizeOf r .+. r
+   "size" @: sf := SizeInBytes r .+. r
 
 -- | A convenient alias for a 'SizedField' with an 'FieldU8' size field.
 type SizedField8 t = SizedField FieldU8 t
@@ -57,22 +59,3 @@ type SizedField32 t = Sized32 (Konst ('RecordField t))
 
 -- | A convenient alias for a 'SizedField' with an 'FieldU64' size field.
 type SizedField64 t = SizedField FieldU64 t
-
--- | For something to be augmented by a size field there must be an instance of
--- this family to generate the value of the size field, e.g. by counting the
--- elements.
-type family SizeOf (c :: k) :: Nat
-type instance SizeOf (b :: BitRecord) = BitRecordMemberCount b
-type instance SizeOf (f :=. v) = SizeOf v
-type instance SizeOf (f := v) = SizeOf v
-type instance SizeOf (LabelF l f) = SizeOf f
-type instance SizeOf (Labelled l f) = SizeOf f
-type instance SizeOf (MkField (t :: BitField (rt:: Type) (st::k) (size::Nat))) = size
-type instance SizeOf (t :: BitField (rt:: Type) (st::k) (size::Nat)) = size
-
-type family PrintHexIfPossible t (s :: Nat) :: PrettyType where
-  PrintHexIfPossible Word64 s = PutHex64 s
-  PrintHexIfPossible Word32 s = PutHex32 s
-  PrintHexIfPossible Word16 s = PutHex16 s
-  PrintHexIfPossible Word8 s = PutHex8 s
-  PrintHexIfPossible x s = TypeError ('Text "Invalid size field type: " ':<>: 'ShowType x)
