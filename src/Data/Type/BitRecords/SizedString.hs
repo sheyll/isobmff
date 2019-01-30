@@ -3,7 +3,9 @@
 module Data.Type.BitRecords.SizedString
   (SizedString()
   ,ASizedString()
-  ,utf8)
+  ,utf8
+  ,utf82
+  ,SizedString2())
   where
 
 import Data.Type.BitRecords.Core
@@ -31,11 +33,14 @@ import Data.Kind.Extra
 type SizedString str bytes =
   MkField ('MkFieldCustom :: BitField ASizedString ASizedString (8 * bytes)) := 'MkASizedString str bytes
 
+type SizedString2 str bytes =
+  Konst ('MkFieldCustom :: BitField ASizedString ASizedString (8 * bytes)) :=. 'MkASizedString str bytes
+
 data ASizedString where
   MkASizedString :: Symbol -> Nat -> ASizedString
 
 type instance
-     SizeFieldValue ('MkASizedString str byteCount) = byteCount
+     SizeOf ('MkASizedString str byteCount) = byteCount
 
 type instance
      ToPretty ASizedString = PutStr "utf-8"
@@ -60,6 +65,19 @@ utf8 = TH.QuasiQuoter undefined undefined mkSizedStr undefined
              return $
                TH.PromotedT ''SizedString `TH.AppT` strT `TH.AppT` byteCountT
 
+-- | Create a 'SizedString' from a utf-8 string
+utf82 :: TH.QuasiQuoter
+utf82 = TH.QuasiQuoter undefined undefined mkSizedStr undefined
+  where mkSizedStr :: String -> TH.Q TH.Type
+        mkSizedStr str =
+          do let strT = TH.LitT (TH.StrTyLit str)
+                 byteCount =
+                   fromIntegral (B.length (E.encodeUtf8 (T.pack str)))
+                 byteCountT = TH.LitT (TH.NumTyLit byteCount)
+             return $
+               TH.PromotedT ''SizedString2 `TH.AppT` strT `TH.AppT` byteCountT
+
+
 instance
   forall (size :: Nat)
     (str :: Symbol)
@@ -68,6 +86,19 @@ instance
     (f :: To (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString size))) .
       (KnownSymbol str)
     => BitStringBuilderHoley (Proxy (f := 'MkASizedString str bytes)) r
+  where
+    bitStringBuilderHoley _ =
+      immediate (appendStrictByteString
+                 (E.encodeUtf8 (T.pack (symbolVal (Proxy @str)))))
+
+instance
+  forall (size :: Nat)
+    (str :: Symbol)
+    (bytes :: Nat)
+    (r :: Type)
+    (f :: To (BitField ASizedString ASizedString size)) .
+      (KnownSymbol str)
+    => BitStringBuilderHoley (Proxy (f :=. 'MkASizedString str bytes)) r
   where
     bitStringBuilderHoley _ =
       immediate (appendStrictByteString

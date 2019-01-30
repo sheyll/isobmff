@@ -67,14 +67,15 @@ type Header (t :: To (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
   .+: "first-sample-flag-present" @: Flag     := fsp
   .+:                                Flag     := 'False
   .+: "data-offset-preset"        @: Flag     := dop
-  .+: "sample-count"              @: FieldU32
-  .+: WhenR dop
+  .+: 'RecordField ("sample-count"  @:: Konst FieldU32)
+  :+: WhenR dop
         ('BitRecordMember ("data-offset"        @: FieldI32))
   :+: WhenR fsp
-        ('BitRecordMember ("first-sample-flags" @: FieldU32))
+        ('RecordField ("first-sample-flags" @:: Konst FieldU32))
 
 
 type Sample (t :: To (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
-      WhenR sdp ('BitRecordMember ("sample-duration" @: FieldU32))
-  :+: WhenR ssp ('BitRecordMember ("sample-size"     @: FieldU32))
-  :+: WhenR sfp ('BitRecordMember ("sample-flags"    @: FieldU32 := 0x02000000)) -- TODO allow flags as in TrackExtends
+      WhenR sdp ('RecordField ("sample-duration" @:: Konst FieldU32))
+  :+: WhenR ssp ('RecordField ("sample-size"     @:: Konst FieldU32))
+  :+: WhenR sfp ('RecordField ("sample-flags"    @:: Konst FieldU32 :=. 0x02000000))
+      -- TODO allow flags as in TrackExtends

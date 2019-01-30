@@ -19,6 +19,7 @@ import           Text.Printf
 data BitRecord where
   EmptyBitRecord     ::BitRecord
   BitRecordMember    ::To (BitRecordField t) -> BitRecord
+  RecordField :: To (BitField rt st size) -> BitRecord
   BitRecordAppend    ::BitRecord -> BitRecord -> BitRecord
   -- TODO  MissingBitRecord          :: ErrorMessage     -> BitRecord
 
@@ -33,12 +34,14 @@ type family WhenR (b :: Bool) (x :: BitRecord) :: BitRecord where
 type family BitRecordSize (x :: BitRecord) :: Nat where
   BitRecordSize 'EmptyBitRecord           = 0
   BitRecordSize ('BitRecordMember f)      = BitRecordFieldSize f
+  BitRecordSize ('RecordField f) = BitFieldSize (From f)
   BitRecordSize ('BitRecordAppend l r)    = BitRecordSize l + BitRecordSize r
 
 -- | Get the total number of members in a record.
 type family BitRecordMemberCount (b :: BitRecord) :: Nat where
   BitRecordMemberCount 'EmptyBitRecord           = 0
   BitRecordMemberCount ('BitRecordMember f)      = 1
+  BitRecordMemberCount ('RecordField f) = 1
   BitRecordMemberCount ('BitRecordAppend l r)    = BitRecordMemberCount l + BitRecordMemberCount r
 
 -- | Get the size of the record.
@@ -50,7 +53,7 @@ getRecordSizeFromProxy
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
-type OptionalRecordOf (f :: To (s :-> To BitRecord)) (x :: Maybe s)
+type OptionalRecordOf (f :: To (s -> To BitRecord)) (x :: Maybe s)
   = (Optional (Konst 'EmptyBitRecord) f $ x :: To BitRecord)
 
 -- ** Record composition
@@ -151,7 +154,7 @@ type family RecArrayToBitRecord (r :: BitRecord) (n :: Nat) :: BitRecord where
 -- | Let type level lists also be records
 data
     BitRecordOfList
-      (f  :: To (foo :-> BitRecord))
+      (f  :: To (foo -> BitRecord))
       (xs :: [foo])
       :: To BitRecord
 
@@ -159,7 +162,7 @@ type instance From (BitRecordOfList f xs) =
   FoldMap BitRecordAppendFun 'EmptyBitRecord f xs
 
 type BitRecordAppendFun = Fun1 BitRecordAppendFun_
-data BitRecordAppendFun_ :: BitRecord -> To (BitRecord :-> BitRecord)
+data BitRecordAppendFun_ :: BitRecord -> To (BitRecord -> BitRecord)
 type instance Apply (BitRecordAppendFun_ l) r = Append l r
 
 -- *** Maybe Record
@@ -179,18 +182,23 @@ type instance From (OptionalRecord 'Nothing)  = 'EmptyBitRecord
 data BitRecordField :: BitField rt st len -> Type
 
 -- | A bit record field with a number of bits
-data MkField t :: To (BitRecordField t)
+data MkField t :: BitRecordField t -> Type
 
 -- **** Setting a Label
 
 -- | A bit record field with a number of bits
 data LabelF :: Symbol -> To (BitRecordField t) -> To (BitRecordField t)
 
+
 -- | A field with a label assigned to it.
 type (l :: Symbol) @: (f :: To
   (BitRecordField (t :: BitField rt (st :: stk) size)))
   = (LabelF l f :: To (BitRecordField t))
 infixr 8 @:
+
+-- | A field with a label assigned to it.
+type (l :: Symbol) @:: (f :: To a) = Labelled l f
+infixr 8 @::
 
 -- **** Assignment
 
@@ -200,6 +208,12 @@ data (:=) :: forall st (t :: BitField rt st size) .
           -> st
           -> To (BitRecordField t)
 infixl 7 :=
+
+-- | A field with a value set at compile time.
+data (:=.) :: To (BitField rt st size)
+           -> st
+           -> To (BitField rt st size)
+infixl 7 :=.
 
 -- | Types of this kind define the basic type of a 'BitRecordField'. Sure, this
 -- could have been an open type, but really, how many actual useful field types
@@ -214,8 +228,8 @@ data BitField
      (bitCount :: Nat)
   where
     MkFieldFlag    ::BitField Bool Bool 1
-    MkFieldBits    :: forall (n :: Nat) . BitField (B n) Nat n
-    MkFieldBitsXXL :: forall (n :: Nat) . BitField Integer Nat n
+    MkFieldBits    :: (forall (n :: Nat) . BitField (B n) Nat n)
+    MkFieldBitsXXL :: (forall (n :: Nat) . BitField Integer Nat n)
     MkFieldU8      ::BitField Word8 Nat 8
     MkFieldU16     ::BitField Word16 Nat 16
     MkFieldU32     ::BitField Word32 Nat 32
@@ -227,11 +241,14 @@ data BitField
     -- TODO refactor this MkFieldCustom, it caused a lot of trouble!
     MkFieldCustom  ::BitField rt st n
 
+type family BitFieldSize (b :: BitField rt st size) :: Nat where
+  BitFieldSize (b :: BitField rt st size) = size
+
 type Flag = MkField 'MkFieldFlag
 type Field n = MkField ( 'MkFieldBits :: BitField (B n) Nat n)
 type FieldU8 = MkField 'MkFieldU8
 type FieldU16 = MkField 'MkFieldU16
-type FieldU32 = MkField 'MkFieldU32
+type FieldU32 =  'MkFieldU32
 type FieldU64 = MkField 'MkFieldU64
 type FieldI8 = MkField 'MkFieldI8
 type FieldI16 = MkField 'MkFieldI16
@@ -302,10 +319,18 @@ type instance ToPretty (rec :: BitRecord) = PrettyRecord rec
 
 type family PrettyRecord (rec :: BitRecord) :: PrettyType where
    PrettyRecord ('BitRecordMember m) = PrettyField m
+   PrettyRecord ('RecordField m) = PrettyRecordField m
    PrettyRecord ' EmptyBitRecord = 'PrettyNewline
    PrettyRecord ('BitRecordAppend l r) = PrettyRecord l <$$> PrettyRecord r
 
 type instance ToPretty (f :: To (BitRecordField t)) = PrettyField f
+
+type family PrettyRecordField (f :: To (BitField (rt :: Type) (st :: Type) (size :: Nat))) :: PrettyType where
+  PrettyRecordField (Konst t) = PrettyFieldType t
+  PrettyRecordField (f :=. v) =
+    PrettyRecordField f <+> PutStr ":=" <+> PrettyFieldValue (From f) v
+  PrettyRecordField (Labelled l f) = l <:> PrettyRecordField f
+
 
 type family PrettyField (f :: To (BitRecordField (t :: BitField (rt :: Type) (st :: Type) (size :: Nat)))) :: PrettyType where
   PrettyField (MkField t) = PrettyFieldType t

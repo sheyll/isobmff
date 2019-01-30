@@ -14,7 +14,7 @@ data DecoderSpecificInfo :: ObjectTypeIndication -> StreamType -> Type where
   MkDecoderSpecificInfo :: BitRecord -> DecoderSpecificInfo o s
 
 data DescriptorOfDecoderSpecificInfo
-  :: To (DecoderSpecificInfo ot st :-> Descriptor 'DecSpecificInfo)
+  :: To (DecoderSpecificInfo ot st -> Descriptor 'DecSpecificInfo)
 
 type instance Apply DescriptorOfDecoderSpecificInfo ('MkDecoderSpecificInfo body) =
    'MkDescriptor body

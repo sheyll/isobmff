@@ -141,15 +141,15 @@ sizedSpec =
             ~~~~~~~~~~~~~~~~~~~~~~~~
                 8 `ShouldBe` BitRecordSize (From (Sized8 'EmptyBitRecord))
             -*  9 `ShouldBe` BitRecordSize (From (Sized8 ('BitRecordMember Flag)))
-            -*  0 `ShouldBe` SizeFieldValue 'EmptyBitRecord
-            -*  1 `ShouldBe` SizeFieldValue ('BitRecordMember Flag)
+            -*  0 `ShouldBe` SizeOf 'EmptyBitRecord
+            -*  1 `ShouldBe` SizeOf ('BitRecordMember Flag)
 
             -/-
 
             "SizedField"
             ~~~~~~~~~~~~
                 9 `ShouldBe` BitRecordSize (From (SizedField8 Flag))
-            -*  1 `ShouldBe` SizeFieldValue  Flag
+            -*  1 `ShouldBe` SizeOf  Flag
 
             -- TODO add more Sized tests, especially for SizedField
           checkSized = Valid
@@ -179,7 +179,7 @@ sizedSpec =
         "<< 00 03 41 42 43 >>"
       describe "32-bit length prefix" $
         it "renders a big endian 32 bit size prefix and the string as UTF-8 bytes" $
-        bitStringPrinter (Proxy :: Proxy (SizedField32 [utf8|ABC|]))
+        bitStringPrinter (Proxy :: Proxy (SizedField32 [utf82|ABC|]))
         `shouldBe`
         "<< 00 00 00 03 41 42 43 >>"
       describe "64-bit length prefix" $

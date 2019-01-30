@@ -27,9 +27,10 @@
 module Data.Kind.Extra
   ( type To
   , type Konst
+  , (:~:)
   , type From
-  , type (:->)
   , type Apply
+  , Labelled
   , type ($)
   , type (:>>=:)
   , type (:>>>:)
@@ -46,6 +47,7 @@ module Data.Kind.Extra
 
 import Data.Kind (type Type)
 import Data.Type.Equality ((:~:))
+import GHC.TypeLits (Symbol)
 
 -- | Indicates that a type constructs another.
 type To foo = (foo -> Type :: Type)
@@ -56,16 +58,16 @@ type family From (t :: foo -> Type) :: foo
 
 -- | A @Konst foo@, @'To' foo@.
 data Konst (a :: k) (b :: k)
-
+type instance From (Konst f) = f
 type instance From ((:~:) a) = a
 
-type instance From (Konst f) = f
+-- | Assign a symbol to a type.
+data Labelled (s :: Symbol) :: To a -> To a
 
--- | A symbolic type-level function.
-data (:->) foo bar
+type instance From (Labelled s t) = From t
 
 -- | An open family of functions from @foo@ to @bar@
-type family Apply (f :: To (foo :-> bar)) (x :: foo) :: bar
+type family Apply (f :: To (foo -> bar)) (x :: foo) :: bar
 
 -- | An open family of functions from @foo@ to @bar@
 -- TODO type family App (f :: To (a -> b)) (x :: To a) :: To b
@@ -74,31 +76,31 @@ type family Apply (f :: To (foo :-> bar)) (x :: foo) :: bar
 type f $ x = Apply f x
 
 -- | Compose functions
-data (:>>>:) :: To (good :-> better) -> To (better :-> best) -> To (good :-> best)
+data (:>>>:) :: To (good -> better) -> To (better -> best) -> To (good -> best)
 infixl 1 :>>>:
 type instance Apply (f :>>>: g) x = g $ (f $ x)
 
 -- | From Input & Compose
-data (:^>>>:) :: To (good :-> better) -> To (better :-> best) -> To (To good :-> best)
+data (:^>>>:) :: To (good -> better) -> To (better -> best) -> To (To good -> best)
 infixl 1 :^>>>:
 type instance Apply (f :^>>>: g) x = g $ (f $ From x)
 
 -- | Compose and 'Konst'
-data (:>>>^:) :: To (good :-> better) -> To (better :-> best) -> To (good :-> To best)
+data (:>>>^:) :: To (good -> better) -> To (better -> best) -> To (good -> To best)
 infixl 1 :>>>^:
 type instance Apply (f :>>>^: g) x = Konst (g $ (f $ x))
 
 -- | A function that applies 'From'
-data Extract :: To (To x :-> x)
+data Extract :: To (To x -> x)
 type instance Apply Extract x = From x
 
 -- | From and ApplyCompose functions
-data (:>>=:) :: To foo -> To (foo :-> To bar) -> To bar
+data (:>>=:) :: To foo -> To (foo -> To bar) -> To bar
 infixl 1 :>>=:
 type instance From (x :>>=: f) = From (f $ From x)
 
 -- | Either use the value from @Just@ or return a fallback value(types(kinds))
-data Optional :: To t -> To (s :-> To t) -> To (Maybe s :-> To t)
+data Optional :: To t -> To (s -> To t) -> To (Maybe s -> To t)
 
 type instance Apply (Optional fallback f) ('Just s) = f $ s
 type instance Apply (Optional fallback f) 'Nothing = fallback
@@ -106,9 +108,9 @@ type instance Apply (Optional fallback f) 'Nothing = fallback
 -- | Map over the elements of a list and fold the result.
 type family
   FoldMap
-          (append :: To (bar :-> To (bar :-> bar)))
+          (append :: To (bar -> To (bar -> bar)))
           (zero :: bar)
-          (f :: To (foo :-> bar))
+          (f :: To (foo -> bar))
           (xs :: [(foo :: Type)]) :: (bar :: Type) where
   FoldMap append zero f '[]       = zero
   FoldMap append zero f (x ': xs) = append $ (f $ x) $ FoldMap append zero f xs
@@ -121,17 +123,17 @@ type family
 
 -- | Like @TyCon1@ from Data.Singletons
 data Fun1 :: (a -> To b)
-            -> To (a :-> To b)
+            -> To (a -> To b)
 type instance Apply (Fun1 f) x = (f x)
 
 data Fun2 :: (a -> b -> To c)
-            -> To (a :-> To (b :-> To c))
+            -> To (a -> To (b -> To c))
 type instance Apply (Fun2 f) x = Fun1 (f x)
 
 data Fun3 :: (a -> b -> c -> To d)
-            -> To (a :-> To (b :-> To (c :-> To d)))
+            -> To (a -> To (b -> To (c -> To d)))
 type instance Apply (Fun3 f) x = Fun2 (f x)
 
 data Fun4 :: (a -> b -> c -> d -> To e)
-            -> To (a :-> To (b :-> To (c :-> To (d :-> To e))))
+            -> To (a -> To (b -> To (c -> To (d -> To e))))
 type instance Apply (Fun4 f) x = Fun3 (f x)

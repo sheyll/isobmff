@@ -32,9 +32,9 @@ type family
               :+: "upstream" @: Flag
               .+: "reserved" @: Field 1        :=  1
               .+: "bufferSizeDB" @: Field 24
-              .+: "maxBitrate"   @: FieldU32
-              .+: "avgBitrate"   @: FieldU32
-              .+: From (BitRecordOfList
+              .+: From ("maxBitrate" @:: Konst ('RecordField (Konst FieldU32)))
+              :+: From ("avgBitrate" @:: Konst ('RecordField (Konst FieldU32)))
+              :+: From (BitRecordOfList
                         (DescriptorOfDecoderSpecificInfo
                          :^>>>: BitRecordOfDescriptor)
                         (di ?:: LengthIn 0 1))

@@ -13,7 +13,7 @@ data Descriptor :: ClassTag n -> Type where
 
 -- TODO ok... this fixed the current problem in DecoderSpecificInfo .. but remove this instances ... or the above ... or ... I dunno
 
-data BitRecordOfDescriptor :: To (Descriptor c :-> BitRecord)
+data BitRecordOfDescriptor :: To (Descriptor c -> BitRecord)
 
 type instance
   Apply BitRecordOfDescriptor ('MkDescriptor body :: Descriptor (tag :: ClassTag tagInd)) =
