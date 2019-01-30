@@ -17,8 +17,8 @@ testAudioObjectType ::
 
       "Small Audio Object Types"
       ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-         5 `ShouldBe` BitRecordSize (AudioObjectTypeRec 'AoReserved5)  -/-
+         5 `ShouldBe` SizeInBits (AudioObjectTypeRec 'AoReserved5)  -/-
 
       "Big Audio Object Types"
       ~~~~~~~~~~~~~~~~~~~~~~~~
-        11 `ShouldBe` BitRecordSize (AudioObjectTypeRec 'AoCustom)
+        11 `ShouldBe` SizeInBits (AudioObjectTypeRec 'AoCustom)

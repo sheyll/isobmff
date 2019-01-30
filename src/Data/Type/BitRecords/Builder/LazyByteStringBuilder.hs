@@ -211,11 +211,11 @@ instance
 
 -- **** Bool
 
-instance forall f a . (BitRecordFieldSize f ~ 1) =>
+instance forall f a . (FieldWidth f ~ 1) =>
   BitStringBuilderHoley (Proxy (f := 'True)) a where
   bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 1))
 
-instance forall f a . (BitRecordFieldSize f ~ 1) =>
+instance forall f a . (FieldWidth f ~ 1) =>
   BitStringBuilderHoley (Proxy (f := 'False)) a where
   bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 0))
 

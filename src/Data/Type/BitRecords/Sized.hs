@@ -5,9 +5,7 @@ module Data.Type.BitRecords.Sized
   , type SizedField, type SizedField8, type SizedField16, type SizedField32, type SizedField64)
   where
 
-import Data.Type.Pretty
 import Data.Type.BitRecords.Core
-import Data.Word
 import GHC.TypeLits
 import Data.Kind.Extra
 import Data.Kind (type Type)
@@ -28,13 +26,16 @@ type Sized8 t = Sized FieldU8 t
 type Sized16 t = Sized FieldU16 t
 
 -- | A convenient alias for a 'Sized' with an 'FieldU32' size field.
-data Sized32 :: To a -> To BitRecord
+type Sized32 t = Sized2 FieldU32 t
 
-type instance From (Sized32 (r :: To BitRecord)) =
-  'RecordField ("size" @:: Konst FieldU32 :=. SizeInBytes (From r)) :+: From r
+-- | A convenient alias for a 'Sized' with an 'FieldU32' size field.
+data Sized2 ::To (BitField rt Nat sz) -> To a -> To BitRecord
 
-type instance From (Sized32 (r :: To (BitField sr st sz))) =
-  'RecordField ("size" @:: Konst FieldU32 :=. SizeInBytes (From r)) :+: 'RecordField r
+type instance From (Sized2 sizeField (r :: To BitRecord)) =
+  'RecordField ("size" @:: sizeField :=. SizeInBytes (From r)) :+: From r
+
+type instance From (Sized2 sizeField (r :: To (BitField sr st sz))) =
+  'RecordField ("size" @:: sizeField :=. SizeInBytes (From r)) :+: 'RecordField r
 
 -- | A convenient alias for a 'Sized' with an 'FieldU64' size field.
 type Sized64 t = Sized FieldU64 t

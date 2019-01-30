@@ -44,10 +44,10 @@ type instance BoxTypeSymbol TrackExtends = "trex"
 
 -- | Defaults for movie fragment - the content
 type TrackExtendsBody =
-     'RecordField ("track_ID"                         @:: Konst FieldU32)
- :+: 'RecordField ("default_sample_description_index" @:: Konst FieldU32)
- :+: 'RecordField ("default_sample_duration"          @:: Konst FieldU32)
- :+: 'RecordField ("default_sample_size"              @:: Konst FieldU32)
+     'RecordField ("track_ID"                         @:: FieldU32)
+ :+: 'RecordField ("default_sample_description_index" @:: FieldU32)
+ :+: 'RecordField ("default_sample_duration"          @:: FieldU32)
+ :+: 'RecordField ("default_sample_size"              @:: FieldU32)
  :+: TrackExtendsDefaultSampleFlags
 
 type TrackExtendsDefaultSampleFlags =

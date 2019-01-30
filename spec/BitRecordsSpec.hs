@@ -23,17 +23,17 @@ basicsSpec = do
 
           "The record size works"
           ~~~~~~~~~~~~~~~~~~~~~~~~
-              1 `ShouldBe` BitRecordFieldSize (FlagJust 'Nothing)
-          -*  1 `ShouldBe` BitRecordFieldSize (FlagJust ('Just "Blah"))
-          -*  1 `ShouldBe` BitRecordFieldSize (FlagNothing ('Just "Blah"))
+              1 `ShouldBe` FieldWidth (FlagJust 'Nothing)
+          -*  1 `ShouldBe` FieldWidth (FlagJust ('Just "Blah"))
+          -*  1 `ShouldBe` FieldWidth (FlagNothing ('Just "Blah"))
           -- TODO reenable tests
-          -- -*  32 `ShouldBe` BitRecordSize (ToBitRecord ('Just FieldU32))
-          -- -*  0 `ShouldBe` BitRecordSize (ToBitRecord '[])
-          -- -*  10 `ShouldBe` BitRecordSize (ToBitRecord '[Field 10])
-          -- -*  25 `ShouldBe` BitRecordSize (ToBitRecord '[Field 10, Field 15])
-          -- -*  1 `ShouldBe` BitRecordSize (ToBitRecord Bool)
-          -- -*  1 `ShouldBe` BitRecordSize (ToBitRecord 'True)
-          -- -*  1 `ShouldBe` BitRecordSize (ToBitRecord 'False)
+          -- -*  32 `ShouldBe` SizeInBits (ToBitRecord ('Just FieldU32))
+          -- -*  0 `ShouldBe` SizeInBits (ToBitRecord '[])
+          -- -*  10 `ShouldBe` SizeInBits (ToBitRecord '[Field 10])
+          -- -*  25 `ShouldBe` SizeInBits (ToBitRecord '[Field 10, Field 15])
+          -- -*  1 `ShouldBe` SizeInBits (ToBitRecord Bool)
+          -- -*  1 `ShouldBe` SizeInBits (ToBitRecord 'True)
+          -- -*  1 `ShouldBe` SizeInBits (ToBitRecord 'False)
         checkFlagJust = Valid
     runIO $ print checkFlagJust
   describe "bitStringBuilder" $ do
@@ -106,9 +106,9 @@ arraySpec =
 
               "The record size works"
               ~~~~~~~~~~~~~~~~~~~~~~~~
-                  1 `ShouldBe` BitRecordSize (From (RecArray ('BitRecordMember Flag) 1))
-              -* 91 `ShouldBe` BitRecordSize (From (("foo" @: Flag .+. FieldU8) ^^ 10) :+. Flag)
-              -* 91 `ShouldBe` BitRecordSize (From (RecArray ("foo" @: Flag .+. FieldU8) 10) :+. Flag)
+                  1 `ShouldBe` SizeInBits (From (RecArray ('BitRecordMember Flag) 1))
+              -* 91 `ShouldBe` SizeInBits (From (("foo" @: Flag .+. FieldU8) ^^ 10) :+. Flag)
+              -* 91 `ShouldBe` SizeInBits (From (RecArray ("foo" @: Flag .+. FieldU8) 10) :+. Flag)
             checkArrayRec = Valid
         runIO $ print checkArrayRec
       describe "showRecord" $
@@ -132,15 +132,15 @@ sizedSpec =
 
             "SizedString"
             ~~~~~~~~~~~~~~~
-                88 `ShouldBe` BitRecordFieldSize [utf8|Hello World|]
-            -* 104 `ShouldBe` BitRecordSize (From (RecordField [utf8|Heλλo World|]))
+                88 `ShouldBe` FieldWidth [utf8|Hello World|]
+            -* 104 `ShouldBe` SizeInBits (From (RecordField [utf8|Heλλo World|]))
 
             -/-
 
             "Sized BitRecord Members"
             ~~~~~~~~~~~~~~~~~~~~~~~~
-                8 `ShouldBe` BitRecordSize (From (Sized8 'EmptyBitRecord))
-            -*  9 `ShouldBe` BitRecordSize (From (Sized8 ('BitRecordMember Flag)))
+                8 `ShouldBe` SizeInBits (From (Sized8 'EmptyBitRecord))
+            -*  9 `ShouldBe` SizeInBits (From (Sized8 ('BitRecordMember Flag)))
             -*  0 `ShouldBe` SizeInBytes 'EmptyBitRecord
             -*  1 `ShouldBe` SizeInBytes ('BitRecordMember Flag)
 
@@ -148,7 +148,7 @@ sizedSpec =
 
             "SizedField"
             ~~~~~~~~~~~~
-                9 `ShouldBe` BitRecordSize (From (SizedField8 Flag))
+                9 `ShouldBe` SizeInBits (From (SizedField8 Flag))
             -*  1 `ShouldBe` SizeInBytes  Flag
 
             -- TODO add more Sized tests, especially for SizedField
@@ -200,7 +200,7 @@ type TestRecAligned =
   "rab" @: Field 8
 
 checkTestRecAligned
-  :: Expect '[ ShouldBe 96        (BitRecordSize TestRecAligned)  ]
+  :: Expect '[ ShouldBe 96        (SizeInBits TestRecAligned)  ]
 checkTestRecAligned = Valid
 
 type TestRecUnAligned =
@@ -212,7 +212,7 @@ type TestRecUnAligned =
             Field 8  := 0xfe
 
 checkTestRecUnAligned
-  :: Expect '[ ShouldBe 71        (BitRecordSize TestRecUnAligned) ]
+  :: Expect '[ ShouldBe 71        (SizeInBits TestRecUnAligned) ]
 checkTestRecUnAligned = Valid
 
 testTakeLastN ::
@@ -409,7 +409,7 @@ spec = do
   arraySpec
   describe "The Set of Type Functions" $
     it "is sound" $ do
-      print (Valid :: Expect (BitRecordSize (Flag .+. Field 7) `Is` 8))
+      print (Valid :: Expect (SizeInBits (Flag .+. Field 7) `Is` 8))
       print testTakeLastN
       print testRem
       print testRemPow2

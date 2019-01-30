@@ -25,8 +25,8 @@ trackRunIso5 !mdatOffset !samples = Box c
                                   ((headerStaticSize `div` 8)
                                    + sampleCount * (sampleStaticSize `div` 8))
             !h                = bitBuilderBox (Proxy @(Header TrackRunFlagsIso5))
-            !headerStaticSize = (natVal (Proxy @(BitRecordSize (Header TrackRunFlagsIso5))))
-            !sampleStaticSize = (natVal (Proxy @(BitRecordSize (Sample TrackRunFlagsIso5))))
+            !headerStaticSize = (natVal (Proxy @(SizeInBits (Header TrackRunFlagsIso5))))
+            !sampleStaticSize = (natVal (Proxy @(SizeInBits (Sample TrackRunFlagsIso5))))
             !sampleCount      = fromIntegral (length samples)
 
         !body = mconcat $ s <$> samples
@@ -67,15 +67,15 @@ type Header (t :: To (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
   .+: "first-sample-flag-present" @: Flag     := fsp
   .+:                                Flag     := 'False
   .+: "data-offset-preset"        @: Flag     := dop
-  .+: 'RecordField ("sample-count"  @:: Konst FieldU32)
+  .+: 'RecordField ("sample-count"  @:: FieldU32)
   :+: WhenR dop
         ('BitRecordMember ("data-offset"        @: FieldI32))
   :+: WhenR fsp
-        ('RecordField ("first-sample-flags" @:: Konst FieldU32))
+        ('RecordField ("first-sample-flags" @:: FieldU32))
 
 
 type Sample (t :: To (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
-      WhenR sdp ('RecordField ("sample-duration" @:: Konst FieldU32))
-  :+: WhenR ssp ('RecordField ("sample-size"     @:: Konst FieldU32))
-  :+: WhenR sfp ('RecordField ("sample-flags"    @:: Konst FieldU32 :=. 0x02000000))
+      WhenR sdp ('RecordField ("sample-duration" @:: FieldU32))
+  :+: WhenR ssp ('RecordField ("sample-size"     @:: FieldU32))
+  :+: WhenR sfp ('RecordField ("sample-flags"    @:: FieldU32 :=. 0x02000000))
       -- TODO allow flags as in TrackExtends

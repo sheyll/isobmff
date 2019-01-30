@@ -14,7 +14,7 @@ type StaticExpandableContentMaxBits = 32
 
 type instance From (StaticExpandableContent record) =
      (ExpandableSize
-        (ShiftR StaticExpandableContentMaxBits (BitRecordSize record) 3))
+        (ShiftR StaticExpandableContentMaxBits (SizeInBits record) 3))
        :+: record
 
 type family ExpandableSize (s :: Nat) :: BitRecord where

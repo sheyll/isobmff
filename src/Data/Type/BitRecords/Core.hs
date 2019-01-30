@@ -17,10 +17,10 @@ import           Text.Printf
 
 -- | 'BitRecordField's assembly
 data BitRecord where
-  EmptyBitRecord     ::BitRecord
-  BitRecordMember    ::To (BitRecordField t) -> BitRecord
-  RecordField :: To (BitField rt st size) -> BitRecord
-  BitRecordAppend    ::BitRecord -> BitRecord -> BitRecord
+  EmptyBitRecord     :: BitRecord
+  BitRecordMember    :: To (BitRecordField t) -> BitRecord
+  RecordField        :: To (BitField rt st size) -> BitRecord
+  BitRecordAppend    :: BitRecord -> BitRecord -> BitRecord
   -- TODO  MissingBitRecord          :: ErrorMessage     -> BitRecord
 
 -- | A conditional 'BitRecord'
@@ -31,11 +31,12 @@ type family WhenR (b :: Bool) (x :: BitRecord) :: BitRecord where
 -- *** Basic Accessor
 
 -- | Get the number of bits in a 'BitRecord'
-type family BitRecordSize (x :: BitRecord) :: Nat where
-  BitRecordSize 'EmptyBitRecord           = 0
-  BitRecordSize ('BitRecordMember f)      = BitRecordFieldSize f
-  BitRecordSize ('RecordField f) = BitFieldSize (From f)
-  BitRecordSize ('BitRecordAppend l r)    = BitRecordSize l + BitRecordSize r
+type family SizeInBits (x :: k) :: Nat where
+  SizeInBits 'EmptyBitRecord           = 0
+  SizeInBits ('BitRecordMember f)      = FieldWidth f
+  SizeInBits ('RecordField f) = BitFieldSize (From f)
+  SizeInBits ('BitRecordAppend l r)    = SizeInBits l + SizeInBits r
+
 
 -- | For something to be augmented by a size field there must be an instance of
 -- this family to generate the value of the size field, e.g. by counting the
@@ -46,14 +47,14 @@ type instance SizeInBytes (f := v) = SizeInBytes v
 type instance SizeInBytes (LabelF l f) = SizeInBytes f
 type instance SizeInBytes (MkField (t :: BitField (rt:: Type) (st::k) (size::Nat))) = SizeInBytes t
 
-type instance SizeInBytes (b :: BitRecord) = BitCountToByteCount (BitRecordSize b)
+type instance SizeInBytes (b :: BitRecord) = Bits2Bytes (SizeInBits b)
 
-type BitCountToByteCount (bitSize :: Nat) =
-  BitCountToByteCount1 (Div bitSize 8) (Mod bitSize 8)
+type Bits2Bytes (bitSize :: Nat) =
+  Bits2Bytes2 (Div bitSize 8) (Mod bitSize 8)
 
-type family BitCountToByteCount1 (bitSizeDiv8 :: Nat) (bitSizeMod8 :: Nat) :: Nat where
-  BitCountToByteCount1 bytes 0 = bytes
-  BitCountToByteCount1 bytes n = bytes + 1
+type family Bits2Bytes2 (bitSizeDiv8 :: Nat) (bitSizeMod8 :: Nat) :: Nat where
+  Bits2Bytes2 bytes 0 = bytes
+  Bits2Bytes2 bytes n = bytes + 1
 
 type instance SizeInBytes (f :=. v) = SizeInBytes v
 type instance SizeInBytes (Labelled l f) = SizeInBytes f
@@ -69,10 +70,10 @@ type family BitRecordMemberCount (b :: BitRecord) :: Nat where
 -- | Get the size of the record.
 getRecordSizeFromProxy
   :: forall px (rec :: BitRecord)
-   . KnownNat (BitRecordSize rec)
+   . KnownNat (SizeInBits rec)
   => px rec
   -> Integer
-getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
+getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (SizeInBits rec))
 
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
 type OptionalRecordOf (f :: To (s -> To BitRecord)) (x :: Maybe s)
@@ -270,7 +271,7 @@ type Flag = MkField 'MkFieldFlag
 type Field n = MkField ( 'MkFieldBits :: BitField (B n) Nat n)
 type FieldU8 = MkField 'MkFieldU8
 type FieldU16 = MkField 'MkFieldU16
-type FieldU32 =  'MkFieldU32
+type FieldU32 =  Konst 'MkFieldU32
 type FieldU64 = MkField 'MkFieldU64
 type FieldI8 = MkField 'MkFieldI8
 type FieldI16 = MkField 'MkFieldI16
@@ -313,15 +314,8 @@ data RecordField :: To (BitRecordField t) -> To BitRecord
 type instance From (RecordField f) = 'BitRecordMember f
 
 -- | Calculate the size as a number of bits from a 'BitRecordField'
-type family BitRecordFieldSize (x :: To (BitRecordField t)) where
-  BitRecordFieldSize (x :: To (BitRecordField (t :: BitField rt st size))) = size
-
-type family PrintHexIfPossible t (s :: Nat) :: PrettyType where
-  PrintHexIfPossible Word64 s = PutHex64 s
-  PrintHexIfPossible Word32 s = PutHex32 s
-  PrintHexIfPossible Word16 s = PutHex16 s
-  PrintHexIfPossible Word8 s = PutHex8 s
-  PrintHexIfPossible x s = TypeError ('Text "Invalid size field type: " ':<>: 'ShowType x)
+type family FieldWidth (x :: To (BitRecordField t)) where
+  FieldWidth (x :: To (BitRecordField (t :: BitField rt st size))) = size
 
 -- * Field and Record PrettyType Instances
 
@@ -358,7 +352,6 @@ type family PrettyRecordField (f :: To (BitField (rt :: Type) (st :: Type) (size
   PrettyRecordField (f :=. v) =
     PrettyRecordField f <+> PutStr ":=" <+> PrettyFieldValue (From f) v
   PrettyRecordField (Labelled l f) = l <:> PrettyRecordField f
-
 
 type family PrettyField (f :: To (BitRecordField (t :: BitField (rt :: Type) (st :: Type) (size :: Nat)))) :: PrettyType where
   PrettyField (MkField t) = PrettyFieldType t
@@ -400,3 +393,10 @@ type family PrettyFieldValue (t :: BitField (rt :: Type) (st :: Type) (size :: N
   PrettyFieldValue ('MkFieldCustom :: BitField rt ct size) v = PrettyCustomFieldValue rt ct size v
 
 type family PrettyCustomFieldValue (rt :: Type) (st :: Type) (size :: Nat) (v :: st) :: PrettyType
+
+type family PrintHexIfPossible t (s :: Nat) :: PrettyType where
+  PrintHexIfPossible Word64 s = PutHex64 s
+  PrintHexIfPossible Word32 s = PutHex32 s
+  PrintHexIfPossible Word16 s = PutHex16 s
+  PrintHexIfPossible Word8 s = PutHex8 s
+  PrintHexIfPossible x s = TypeError ('Text "Invalid size field type: " ':<>: 'ShowType x)
