@@ -31,6 +31,9 @@ module Data.Kind.Extra
   , type From
   , type Apply
   , Labelled
+  , Named
+  , Name
+  , Anonymous
   , type ($)
   , type (:>>=:)
   , type (:>>>:)
@@ -61,7 +64,17 @@ data Konst (a :: k) (b :: k)
 type instance From (Konst f) = f
 type instance From ((:~:) a) = a
 
+-- | Phantom type for things that have a name
+data Named s
+
+-- | Assign a name to something that has no name
+data Name :: Symbol -> To s -> To (Named s)
+
+-- | Remove tha name of a 'NamedStructure' to get to a 'Structure'
+data Anonymous (x :: To (Named s)) :: To s
+
 -- | Assign a symbol to a type.
+-- @deprecated
 data Labelled (s :: Symbol) :: To a -> To a
 
 type instance From (Labelled s t) = From t

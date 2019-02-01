@@ -23,7 +23,7 @@ type instance From (Sized sf r) =
 type Sized8 t = Sized FieldU8 t
 
 -- | A convenient alias for a 'Sized' with an 'FieldU16' size field.
-type Sized16 t = Sized FieldU16 t
+type Sized16 t = Sized2 FieldU16 t
 
 -- | A convenient alias for a 'Sized' with an 'FieldU32' size field.
 type Sized32 t = Sized2 FieldU32 t
@@ -53,7 +53,7 @@ type instance From (SizedField sf r) =
 type SizedField8 t = SizedField FieldU8 t
 
 -- | A convenient alias for a 'SizedField' with an 'FieldU16' size field.
-type SizedField16 t = SizedField FieldU16 t
+type SizedField16 t = Sized16 (Konst ('RecordField t))
 
 -- | A convenient alias for a 'SizedField' with an 'FieldU32' size field.
 type SizedField32 t = Sized32 (Konst ('RecordField t))

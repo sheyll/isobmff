@@ -64,7 +64,7 @@ type DefaultStreamPrio = StaticFieldValue "streamPrio" 0
 type instance
   From (ESDescriptor esId depEsId url ocrEsId streamPrio decConfig slConfig) =
   'MkDescriptor
-     ("esId" @: FieldU16 :~ esId
+     (Labelled "esId" FieldU16 :~ esId
       .+: "depEsIdFlag" @: FlagJust depEsId
       .+: "urlFlag" @: FlagJust url
       .+: "ocrEsIdFlag" @: FlagJust ocrEsId
