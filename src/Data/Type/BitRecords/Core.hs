@@ -41,20 +41,28 @@ import           GHC.TypeLits
 import           Text.Printf
 import Data.Tagged
 import Data.Type.Bool
+import Data.Type.Equality (type (==))
 import Numeric.Natural
 import Test.TypeSpec
 
 -- | The number of bits that a structure with a predetermined fixed length requires.
 type family BitCount (t :: To Structure) :: Nat
 
+-- | The type signature of a constructor (function) for a structure
 type family Constructor (t :: To Structure) (next) :: k
 
 -- | Phantom type for structured data
 data Structure = MkStructure
 
 type instance BitCount (Anonymous (Name name struct)) = BitCount struct
-
 type instance Constructor (Anonymous (Name name struct)) next = Constructor struct next
+
+-- | Empty Structure
+data EmptyStructure :: To Structure
+
+type instance BitCount EmptyStructure = 0
+type instance Constructor EmptyStructure next = next
+
 
 -- | A 'NamedStructure' composed of a list of other structures in natural order.
 data CompoundStructure :: [To (Named Structure)] -> To Structure
@@ -69,6 +77,9 @@ type instance Constructor (CompoundStructure (Name n x ': xs)) next = Constructo
 data BitSequence (length :: Nat) :: To Structure
 
 type instance BitCount (BitSequence n) = n
+type instance Constructor (BitSequence length) next =
+  If (length <=? 64 && 1 <=? length )
+    (Word64 -> next) (TypeError ('Text "invalid bit sequence length: " ':<>: 'ShowType length))
 
 type (>..) name rest = Name name (BitSequence 2) ': rest
 type (>...) name rest = Name name (BitSequence 3) ': rest
@@ -86,44 +97,52 @@ infixr 1 >....:...
 infixr 1 >....:....
 -- ** Integer Sequences
 
+-- | A Wrapper for Haskell types. Users should implement the 'BitCount' and 'Constructor' instances.
 data TypeStructure :: Type -> To Structure
 
+type U8 = TypeStructure Word8
+type instance BitCount (TypeStructure Word8) = 8
+type instance Constructor (TypeStructure Word8) next = Word8 -> next
+
+type S8 = TypeStructure Int8
+type instance BitCount (TypeStructure Int8) = 8
+type instance Constructor (TypeStructure Int8) next = Int8 -> next
+
 type FlagStructure = TypeStructure Bool
-
 type instance BitCount (TypeStructure Bool) = 1
+type instance Constructor (TypeStructure Bool) next = Bool -> next
 
--- | Endianess
+-- | Structure holding integral numbers
+data IntegerStructure :: Nat -> Sign -> Endianess -> To Structure where
+  S16LE :: Int16 -> IntegerStructure 16 'Signed 'LE 'MkStructure
+  S16BE :: Int16 -> IntegerStructure 16 'Signed 'BE 'MkStructure
+  U16LE :: Word16 -> IntegerStructure 16 'Unsigned 'LE 'MkStructure
+  U16BE :: Word16 -> IntegerStructure 16 'Unsigned 'BE 'MkStructure
+  S32LE :: Int32 -> IntegerStructure 32 'Signed 'LE 'MkStructure
+  S32BE :: Int32 -> IntegerStructure 32 'Signed 'BE 'MkStructure
+  U32LE :: Word32 -> IntegerStructure 32 'Unsigned 'LE 'MkStructure
+  U32BE :: Word32 -> IntegerStructure 32 'Unsigned 'BE 'MkStructure
+  S64LE :: Int64 -> IntegerStructure 64 'Signed 'LE 'MkStructure
+  S64BE :: Int64 -> IntegerStructure 64 'Signed 'BE 'MkStructure
+  U64LE :: Word64 -> IntegerStructure 64 'Unsigned 'LE 'MkStructure
+  U64BE :: Word64 -> IntegerStructure 64 'Unsigned 'BE 'MkStructure
+
+-- | Endianess of an 'IntegerStructure'
 data Endianess = LE | BE
 
+-- | Integer sign of an 'IntegerStructure'
 data Sign = Signed | Unsigned
+
+type instance BitCount (IntegerStructure n s e) =
+  If (n == 16) 16 (If (n == 32) 32 (If (n == 64) 64 (TypeError ('Text "Invalid size in: " ':<>: 'ShowType (IntegerStructure n s e)))))
+type instance Constructor (IntegerStructure n s e) next   = IntegerStructure n s e 'MkStructure -> next
+
+type U n e = IntegerStructure n 'Unsigned e
+type S n e = IntegerStructure n 'Signed e
 
 data ConstantStructure :: Nat -> To Structure -> To Structure
 type instance BitCount (ConstantStructure n s) = BitCount s
 type instance Constructor (ConstantStructure val struct) next = next
-
-data IntegerStructure :: Nat -> Sign -> Endianess -> To Structure where
-  S8 :: Int8 -> IntegerStructure 8 'Signed e 'MkStructure
-  U8 :: Word8 -> IntegerStructure 8 'Unsigned e 'MkStructure
-  S16 :: Int16 -> IntegerStructure 16 'Signed e 'MkStructure
-  U16 :: Word16 -> IntegerStructure 16 'Unsigned e 'MkStructure
-
-type instance BitCount (IntegerStructure n s e) = n
-
-type instance Constructor (IntegerStructure 8 'Signed 'BE) next = Int8 -> next
-type instance Constructor (IntegerStructure 8 'Unsigned 'BE) next = Word8 -> next
-type instance Constructor (IntegerStructure 16 'Signed e) next = Int16 -> next
-type instance Constructor (IntegerStructure 16 'Unsigned e) next = Word16 -> next
-type instance Constructor (IntegerStructure 32 'Signed e) next = Int32 -> next
-type instance Constructor (IntegerStructure 32 'Unsigned e) next = Word32 -> next
-type instance Constructor (IntegerStructure 64 'Signed e) next = Int64 -> next
-type instance Constructor (IntegerStructure 64 'Unsigned e) next = Word64 -> next
--- type instance Constructor (IntegerStructure x y z) next = TypeError ('Text "No constructor for integer structure: " :<>: 'ShowType (IntegerStructure x y z))
-
-
-type U n e = IntegerStructure n 'Unsigned e
-type U8 = U 8 BE
-type S n e = IntegerStructure n 'Signed e
-type S8 = S 8 BE
 
 data ConditionalStructure (condition :: Bool) (ifStruct :: To Structure) (elseStruct :: To Structure) :: To Structure
 
@@ -139,9 +158,10 @@ data BoolProxy (t :: Bool) where
 
 _typeSpecBitCount :: BoolProxy (testBool :: Bool) ->
               Expect [ BitCount U8 `ShouldBe` 8
+                     , BitCount EmptyStructure `ShouldBe` 0
                      , BitCount (CompoundStructure [Name "x" U8, Name "y" U8]) `ShouldBe` 16
                      , BitCount (S 16 'BE) `ShouldBe` 16
-                     , BitCount (ConditionalStructure testBool (U 32 'LE) (S 8 'BE)) `ShouldBe` (If testBool 32 8)
+                     , BitCount (ConditionalStructure testBool (U 32 'LE) S8) `ShouldBe` (If testBool 32 8)
                      , BitCount (CompoundStructure ("field 1" >... "field 2" >.. "field 3" >....:.
                                          '[Name "field 4" (CompoundStructure ("field 4.1" >... "field 4.2" >....:.. '[]))])) `ShouldBe` 19
                      , BitCount (ConstantStructure 110 (BitSequence 4)) `ShouldBe` 4
@@ -151,20 +171,31 @@ _typeSpecBitCount FalseProxy = Valid
 
 _constructorSpec :: ()
 _constructorSpec =
-    (undefined :: Constructor U8 ()) (undefined :: Word8 )
+    (undefined :: Constructor U8 ())          (undefined :: Word8 )
+  <> (undefined :: Constructor S8 ())         (undefined :: Int8 )
+  <> (undefined :: Constructor FlagStructure ()) (undefined :: Bool )
+  <> (undefined :: Constructor (S 16 'BE) ()) (undefined :: IntegerStructure 16 'Signed 'BE  'MkStructure )
+  <> (undefined :: Constructor (U 16 'BE) ()) (undefined :: IntegerStructure 16 'Unsigned 'BE  'MkStructure )
+  <> (undefined :: Constructor (S 16 'LE) ()) (undefined :: IntegerStructure 16 'Signed 'LE  'MkStructure )
+  <> (undefined :: Constructor (U 16 'LE) ()) (undefined :: IntegerStructure 16 'Unsigned 'LE  'MkStructure )
+  <> (undefined :: Constructor (S 32 'BE) ()) (undefined :: IntegerStructure 32 'Signed 'BE  'MkStructure )
+  <> (undefined :: Constructor (U 32 'BE) ()) (undefined :: IntegerStructure 32 'Unsigned 'BE  'MkStructure )
+  <> (undefined :: Constructor (S 32 'LE) ()) (undefined :: IntegerStructure 32 'Signed 'LE  'MkStructure )
+  <> (undefined :: Constructor (U 32 'LE) ()) (undefined :: IntegerStructure 32 'Unsigned 'LE  'MkStructure )
+  <> (undefined :: Constructor (S 64 'BE) ()) (undefined :: IntegerStructure 64 'Signed 'BE  'MkStructure )
+  <> (undefined :: Constructor (U 64 'BE) ()) (undefined :: IntegerStructure 64 'Unsigned 'BE  'MkStructure )
+  <> (undefined :: Constructor (S 64 'LE) ()) (undefined :: IntegerStructure 64 'Signed 'LE  'MkStructure )
+  <> (undefined :: Constructor (U 64 'LE) ()) (undefined :: IntegerStructure 64 'Unsigned 'LE  'MkStructure )
+  <> (undefined :: Constructor (Anonymous (Name "foo" U8)) ()) (undefined :: Word8 )
+  <> (undefined :: Constructor (ConstantStructure 110 U8) ())
   <> (undefined :: Constructor (CompoundStructure '[]) ())
+  <> (undefined :: Constructor EmptyStructure ())
+  <> (undefined :: Constructor (BitSequence 15) ()) (undefined :: Word64)
+  <> (undefined :: Constructor (ConditionalStructure  'True  (CompoundStructure '[]) U8) ())
+  <> (undefined :: Constructor (ConditionalStructure  'False  (CompoundStructure '[]) U8) ()) (undefined :: Word8)
   <> (undefined :: Constructor (CompoundStructure '[Name "x" U8, Name "y" S8]) ()) (undefined :: Word8 ) (undefined :: Int8 )
+  <> (undefined :: Constructor (CompoundStructure '[Name "x" U8, Name "y" S8, Name "z" S8]) ()) (undefined :: Word8 ) (undefined :: Int8 ) (undefined :: Int8 )
 
-_typeSpecConstructor ::
-              Expect ( (Constructor (IntegerStructure 8 'Unsigned 'BE) ()) `ShouldBe` (Word8 -> ())
-                   --  , Constructor (CompoundStructure [Name "x" U8, Name "y" U8]) () `ShouldBe` (Int8 -> Int8 -> ())
-                   --  , Constructor (S 16 'BE) () `ShouldBe` (Int16 -> ())
-                   --  , Constructor (ConditionalStructure testBool (U 32 'LE) (S 8 'BE)) () `ShouldBe` (If testBool (Word32 ->()) (Int8 -> ()))
-                    --  , Constructor (CompoundStructure ("field 1" >... "field 2" >.. "field 3" >....:.
-                    --                      '[Name "field 4" (CompoundStructure ("field 4.1" >... "field 4.2" >....:.. '[]))])) `ShouldBe` 19
-                    --  , Constructor (ConstantStructure 110 (BitSequence 4)) `ShouldBe` 4
-              )
-_typeSpecConstructor  = Valid
 
 -- * Bit-Records
 
