@@ -13,8 +13,8 @@
 --
 -- Also complete bit sequence may be constructed or destructed from and to Haskell types.
 --
--- Further more, the structures may contain dependent sub-sequences, for example to
--- express structures that precede a /length/ field before a repetitive block data.
+-- Further more, the Record may contain dependent sub-sequences, for example to
+-- express Record that precede a /length/ field before a repetitive block data.
 --
 -- Antother example for dependent sequences is /fields/ whose presence depends on
 -- /flags/ preceding them.
@@ -43,6 +43,7 @@ import Data.Type.Bool
 import Data.Type.Equality (type (==))
 import Numeric.Natural
 import Test.TypeSpec
+import Data.Type.BitRecords.TypeLits
 
 -- | Phantom type for structured data
 data Structure = MkStructure
@@ -50,14 +51,16 @@ data Structure = MkStructure
 -- | The number of bits that a structure with a predetermined fixed length requires.
 type family BitCount (t :: To Structure) :: Nat
 
+-- | The class accompanying 'Structure' derivatives
 -- | The type signature of a constructor (function) for a structure
-type family Constructor (t :: To Structure) (next) :: k
+type family Constructor (t :: To Structure) next :: k
 
 -- | Support for Pretty Printing 'Structure' Types
 type family PrettyStructure (struct :: To Structure) :: PrettyType
+
 type instance ToPretty (struct :: To Structure) = PrettyStructure struct
 
--- | Support assinging type literals as constant values to structures
+-- | Support assinging type literals as constant values to Record
 type family StructureLiteral (strict :: To Structure) :: To TypeLit
 
 -- | Empty Structure
@@ -68,63 +71,33 @@ type instance Constructor EmptyStructure next = next
 type instance PrettyStructure EmptyStructure = 'PrettyEmpty
 type instance StructureLiteral EmptyStructure = EmptyLiteral
 
-data TypeLit = MkTypeLit
-
-data Promoting (t :: To b)  (tt :: t (k :: b))
-
--- | An empty type literal
-data EmptyLiteral :: To TypeLit where
-  MkEmptyLiteral :: EmptyLiteral 'MkTypeLit
-
-type instance ToPretty 'MkEmptyLiteral = PrettyEmpty
-
--- | A Signed type literal number
-data SignedNatLiteral :: To TypeLit where
-  Positive :: Nat -> SignedNatLiteral 'MkTypeLit
-  Negative :: Nat -> SignedNatLiteral 'MkTypeLit
-
-type instance ToPretty ('Positive x) = PutNat x
-type instance ToPretty ('Negative x) = PutStr "-" <++> PutNat x
-
--- | Passthrough predefined type literals
-data NatLiteral :: To TypeLit where
-  MkNat :: Nat -> NatLiteral 'MkTypeLit
-
-type instance ToPretty ('MkNat x) = PutBits x
-
--- | A Bool literal
-data FlagLiteral :: To TypeLit where
-  MkFlag :: Bool -> FlagLiteral 'MkTypeLit
-
-type instance ToPretty ('MkFlag x ) = ToPretty x
-
 type instance BitCount (Anonymous (Name name struct)) = BitCount struct
 type instance Constructor (Anonymous (Name name struct)) next = Constructor struct next
 type instance PrettyStructure (Anonymous (Name name struct)) = name <:> PrettyStructure struct
 type instance StructureLiteral (Anonymous (Name name struct)) = StructureLiteral struct
 
--- | A 'NamedStructure' composed of a list of other structures in natural order.
-data CompoundStructure :: [To (Named Structure)] -> To Structure
+-- | A record is a list of fields, 'Name' 'Structure' composed of a list of other Record in natural order.
+data Record :: [To (Named Structure)] -> To Structure
 
-type instance BitCount (CompoundStructure '[]) = 0
-type instance BitCount (CompoundStructure (x ': xs)) = BitCount (Anonymous x) + BitCount (CompoundStructure xs)
-type instance Constructor (CompoundStructure ('[] :: [To (Named Structure)])) next = next
-type instance Constructor (CompoundStructure (x ': xs)) next = Constructor (Anonymous x) (Constructor (CompoundStructure xs) next)
+type instance BitCount (Record '[]) = 0
+type instance BitCount (Record (x ': xs)) = BitCount (Anonymous x) + BitCount (Record xs)
+type instance Constructor (Record ('[] :: [To (Named Structure)])) next = next
+type instance Constructor (Record (x ': xs)) next = Constructor (Anonymous x) (Constructor (Record xs) next)
 
-type instance PrettyStructure (CompoundStructure xs) = "CompoundStructure" <:$$--> PrettyCompoundStructure xs
+type instance PrettyStructure (Record xs) = "Record" <:$$--> PrettyRecord xs
 
 type family (<>) (a :: To (Named Structure)) (b :: k) :: To Structure where
-  a <> (b :: To (Named Structure)) = CompoundStructure '[a, b]
-  a <> (CompoundStructure xs) = CompoundStructure (a ': xs)
+  a <> (b :: To (Named Structure)) = Record '[a, b]
+  a <> (Record xs) = Record (a ': xs)
 infixr 6 <>
 
-type family PrettyCompoundStructure (xs :: [To (Named Structure)]) :: PrettyType where
-  PrettyCompoundStructure '[] = 'PrettyEmpty
-  PrettyCompoundStructure (x ': xs) =
-    (PutStr "-" <+> PrettyStructure (Anonymous x)) <$$> PrettyCompoundStructure xs
+type family PrettyRecord (xs :: [To (Named Structure)]) :: PrettyType where
+  PrettyRecord '[] = 'PrettyEmpty
+  PrettyRecord (x ': xs) =
+    (PutStr "-" <+> PrettyStructure (Anonymous x)) <$$> PrettyRecord xs
 
-type instance StructureLiteral (CompoundStructure '[]) = EmptyLiteral
-type instance StructureLiteral (CompoundStructure (x ': xs)) = NatLiteral
+type instance StructureLiteral (Record '[]) = EmptyLiteral
+type instance StructureLiteral (Record (x ': xs)) = NatLiteral
 
 -- | A fixed length sequence of bits.
 data BitSequence (length :: Nat) :: To Structure
@@ -148,7 +121,17 @@ type instance Constructor (BitSequence length) next =
 type instance PrettyStructure (BitSequence length) =
   WithValidBitSequenceLength length (PutStr "BitSequence " <+> PutNat length)
 type instance StructureLiteral (BitSequence length) =
-  WithValidBitSequenceLength length NatLiteral
+  WithValidBitSequenceLength length (ValidBitsLiteral length)
+
+
+-- | A constant, fixed length sequence of bits.
+data ConstantStructure :: t 'MkTypeLit -> To Structure
+
+type instance BitCount (ConstantStructure r) = TypeLitBits r
+type instance Constructor (ConstantStructure r) next = next
+type instance PrettyStructure (ConstantStructure r) = "ConstantStructure" <:> ToPretty r
+type instance StructureLiteral (ConstantStructure length) = EmptyLiteral
+
 -- ** Integer Sequences
 
 -- | A Wrapper for Haskell types. Users should implement the 'BitCount' and 'Constructor' instances.
@@ -214,41 +197,31 @@ type instance StructureLiteral (IntegerStructure n s e) =
 type U n e = IntegerStructure n 'Unsigned e
 type S n e = IntegerStructure n 'Signed e
 
--- | Assign a constant number value to some structure.
-data ConstantStructure
-  :: Promoting (StructureLiteral struct) literal -> struct 'MkStructure -> To Structure
+-- | Structure consisting of predefined type level literal values.
 
 
--- | Calculate the number of bits require to represent the given type literal value
-type family TypeLitBits (value :: k) :: Nat
+-- | Compile time fixed content structure aliased to existing 'Structure'.
+data Assign (struct :: To Structure)
+  :: ToTypeLit (StructureLiteral struct) -> To Structure
 
-type instance TypeLitBits (MkNat v ) = NatBits v
-type instance TypeLitBits (Positive v) = NatBits v + 1
-type instance TypeLitBits (Negative v) = NatBits v + 1
-type instance TypeLitBits (MkFlag v) = 1
-
-type family NatBits (value :: Nat) :: Nat where
-  NatBits 0 = 1
-  NatBits n = Log2 n + 1
-
-type family WithValidConstantStructureSize (tl :: To TypeLit) (value :: tl 'MkTypeLit) (struct :: To Structure) (out :: k) :: k where
-  WithValidConstantStructureSize x value struct out =
+type family WithValidLiteralSize (struct :: To Structure) arg (out :: k) :: k where
+  WithValidLiteralSize struct value out =
     If (TypeLitBits value <=? BitCount struct)
       out
-      (TypeError ('Text "ConstantStructure value too big to fit into structure, the value " ':<>: 'ShowType value
+      (TypeError ('Text "Assign value too big to fit into structure, the value " ':<>: 'ShowType value
                   ':<>: 'Text " requires " ':<>: 'ShowType (TypeLitBits value)
                   ':<>: 'Text " bits, but the structure "  ':<>: 'ShowType struct
                   ':<>: 'Text " has only a size of " ':<>: 'ShowType (BitCount struct)
                   ':<>: 'Text " bits."))
 
-type instance BitCount (ConstantStructure t n s) = WithValidConstantStructureSize t n s (BitCount s)
-type instance Constructor (ConstantStructure t val struct) next =
-  WithValidConstantStructureSize t val struct next
-type instance PrettyStructure (ConstantStructure t n s) =
-  WithValidConstantStructureSize t n s
-    (PutStr "ConstantStructure" <+> ToPretty n <+> PrettyStructure s)
-type instance StructureLiteral (ConstantStructure t n s) =
-  TypeError ('Text "Cannot assign a constant value twice: " ':<>: 'ShowType (ConstantStructure t n s))
+type instance BitCount (Assign s a) = WithValidLiteralSize s a (BitCount s)
+type instance Constructor (Assign s a) next =
+  WithValidLiteralSize s a next
+type instance PrettyStructure (Assign s a) =
+  WithValidLiteralSize s a
+    (PutStr "Assign" <+> ToPretty s <+> ToPretty a)
+type instance StructureLiteral (Assign s a) =
+  TypeError ('Text "Cannot assign a constant value twice: " ':<>: 'ShowType (Assign s a))
 
 data ConditionalStructure (condition :: Bool) (ifStruct :: To Structure) (elseStruct :: To Structure) :: To Structure
 
@@ -285,13 +258,13 @@ _typeSpecBitCount
   :: BoolProxy (testBool :: Bool)
   -> Expect [ BitCount U8 `ShouldBe` 8
             , BitCount EmptyStructure `ShouldBe` 0
-            , BitCount (CompoundStructure [Name "x" U8, Name "y" U8]) `ShouldBe` 16
+            , BitCount (Record [Name "x" U8, Name "y" U8]) `ShouldBe` 16
             , BitCount (S 16 'BE) `ShouldBe` 16
             , BitCount (ConditionalStructure testBool (U 32 'LE) S8) `ShouldBe` (If testBool 32 8)
             , BitCount ("field 1"//3 <> "field 2"//2 <> "field 3"//5 <>
                           Name "field 4" ("field 4.1"//3 <> "field 4.2"//6))
                          `ShouldBe` 19
-            , BitCount (ConstantStructure 0 (BitSequence 4)) `ShouldBe` 4
+            , BitCount (Assign (BitSequence 4) (BitsLiteral '[1,0,0,1])) `ShouldBe` 4
             ]
 _typeSpecBitCount TrueProxy = Valid
 _typeSpecBitCount FalseProxy = Valid
@@ -299,28 +272,30 @@ _typeSpecBitCount FalseProxy = Valid
 _typeSpecStructureLiteral
   :: BoolProxy (testBool :: Bool)
   -> Expect [ StructureLiteral EmptyStructure `ShouldBe` EmptyLiteral
-            -- , StructureLiteral U8 `ShouldBe` Nat
-            -- , StructureLiteral S8 `ShouldBe` SignedNatLiteral
-            -- , StructureLiteral FlagStructure `ShouldBe` Bool
-            -- , StructureLiteral (Anonymous (Name "foo" S8)) `ShouldBe` StructureLiteral S8
-            -- , StructureLiteral EmptyStructure `ShouldBe` '()
-            -- , StructureLiteral (CompoundStructure [Name "x" U8, Name "y" U8]) `ShouldBe` Nat
-            -- , StructureLiteral (S 16 'BE) `ShouldBe` SignedNatLiteral
-            -- , StructureLiteral (U 16 'BE) `ShouldBe` Nat
-            -- , StructureLiteral (S 32 'BE) `ShouldBe` SignedNatLiteral
-            -- , StructureLiteral (U 32 'BE) `ShouldBe` Nat
-            -- , StructureLiteral (S 64 'BE) `ShouldBe` SignedNatLiteral
-            -- , StructureLiteral (U 64 'BE) `ShouldBe` Nat
-            -- , StructureLiteral (S 16 'LE) `ShouldBe` SignedNatLiteral
-            -- , StructureLiteral (U 16 'LE) `ShouldBe` Nat
-            -- , StructureLiteral (S 32 'LE) `ShouldBe` SignedNatLiteral
-            -- , StructureLiteral (U 32 'LE) `ShouldBe` Nat
-            -- , StructureLiteral (S 64 'LE) `ShouldBe` SignedNatLiteral
-            -- , StructureLiteral (U 64 'LE) `ShouldBe` Nat
-            -- , StructureLiteral (ConditionalStructure testBool (U 32 'LE) S8) `ShouldBe` (If testBool Nat SignedNatLiteral)
-            -- , StructureLiteral ("field 1"//3 <> "field 2"//2 <> "field 3"//5 <>
-            --                    Name "field 4" ("field 4.1"//3 <> "field 4.2"//6))
-            --                   `ShouldBe` Nat
+            , StructureLiteral U8 `ShouldBe` NatLiteral
+            , StructureLiteral S8 `ShouldBe` SignedNatLiteral
+            , StructureLiteral FlagStructure `ShouldBe` FlagLiteral
+            , StructureLiteral (Anonymous (Name "foo" S8)) `ShouldBe` StructureLiteral S8
+            , StructureLiteral (Record [Name "x" U8, Name "y" U8]) `ShouldBe` NatLiteral
+            , StructureLiteral (S 16 'BE) `ShouldBe` SignedNatLiteral
+            , StructureLiteral (U 16 'BE) `ShouldBe` NatLiteral
+            , StructureLiteral (S 32 'BE) `ShouldBe` SignedNatLiteral
+            , StructureLiteral (U 32 'BE) `ShouldBe` NatLiteral
+            , StructureLiteral (S 64 'BE) `ShouldBe` SignedNatLiteral
+            , StructureLiteral (U 64 'BE) `ShouldBe` NatLiteral
+            , StructureLiteral (S 16 'LE) `ShouldBe` SignedNatLiteral
+            , StructureLiteral (U 16 'LE) `ShouldBe` NatLiteral
+            , StructureLiteral (S 32 'LE) `ShouldBe` SignedNatLiteral
+            , StructureLiteral (U 32 'LE) `ShouldBe` NatLiteral
+            , StructureLiteral (S 64 'LE) `ShouldBe` SignedNatLiteral
+            , StructureLiteral (U 64 'LE) `ShouldBe` NatLiteral
+            , StructureLiteral (ConditionalStructure testBool (U 32 'LE) S8)
+                `ShouldBe` (If testBool NatLiteral SignedNatLiteral)
+            , StructureLiteral ("field 1"//3 <> "field 2"//2 <> "field 3"//5 <>
+                               Name "field 4" ("field 4.1"//3 <> "field 4.2"//6))
+                              `ShouldBe` NatLiteral
+            , StructureLiteral (ConstantStructure (BitsLiteral [1,0,0])) `ShouldBe` EmptyLiteral
+            , StructureLiteral (BitSequence 19) `ShouldBe` (ValidBitsLiteral 19)
             ]
 _typeSpecStructureLiteral TrueProxy = Valid
 _typeSpecStructureLiteral FalseProxy = Valid
@@ -343,14 +318,15 @@ _constructorSpec =
   <> (undefined :: Constructor (S 64 'LE) ()) (undefined :: IntegerStructure 64 'Signed 'LE  'MkStructure )
   <> (undefined :: Constructor (U 64 'LE) ()) (undefined :: IntegerStructure 64 'Unsigned 'LE  'MkStructure )
   <> (undefined :: Constructor (Anonymous (Name "foo" U8)) ()) (undefined :: Word8 )
-  <> (undefined :: Constructor (ConstantStructure 256 (Name "foo" U8 <> Name "bar" FlagStructure)) ())
-  <> (undefined :: Constructor (CompoundStructure '[]) ())
+  <> (undefined :: Constructor (Assign (Name "foo" U8 <> Name "bar" FlagStructure) (MkNat 256)) ())
+  <> (undefined :: Constructor (Record '[]) ())
   <> (undefined :: Constructor EmptyStructure ())
   <> (undefined :: Constructor (BitSequence 15) ()) (undefined :: Word64)
-  <> (undefined :: Constructor (ConditionalStructure  'True  (CompoundStructure '[]) U8) ())
-  <> (undefined :: Constructor (ConditionalStructure  'False  (CompoundStructure '[]) U8) ()) (undefined :: Word8)
-  <> (undefined :: Constructor (CompoundStructure '[Name "x" U8, Name "y" S8]) ()) (undefined :: Word8 ) (undefined :: Int8 )
+  <> (undefined :: Constructor (ConditionalStructure  'True  (Record '[]) U8) ())
+  <> (undefined :: Constructor (ConditionalStructure  'False  (Record '[]) U8) ()) (undefined :: Word8)
+  <> (undefined :: Constructor (Record '[Name "x" U8, Name "y" S8]) ()) (undefined :: Word8 ) (undefined :: Int8 )
   <> (undefined :: Constructor (Name "x" U8 <> Name "y" S8 <> Name "z" S8) ()) (undefined :: Word8 ) (undefined :: Int8 ) (undefined :: Int8 )
+  <> (undefined :: Constructor (ConstantStructure (BitsLiteral [1,0,1,0])) ())
 
 _prettySpec ::
   Proxy (
@@ -375,7 +351,7 @@ _prettySpec ::
         , PrettyStructure ("x"//32 <> "y"//32 <> "z"//8)
         , PrettyStructure (ConditionalStructure 'False S8 U8)
         , PrettyStructure (ConditionalStructure 'True S8 U8)
-        , PrettyStructure (ConstantStructure 123 U8)
+        , PrettyStructure (Assign S8 ('Positive 123))
         ]
     )
   -> String
