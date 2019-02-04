@@ -26,7 +26,7 @@ spec =
 #ifdef COMPLEXTESTS
        it "can be transformed to binary output" $
          let actual =
-              bitStringPrinter
+              bitBuffer64Printer
                 (Proxy @(BitRecordOfDescriptor
                                $ From  (Mp4AacAudioDecoderConfigDescriptor
                                          (AudioConfigAacLc
@@ -42,7 +42,7 @@ spec =
          in actual `shouldBe` expexted
      describe "Mp4AacLcEsDescriptor" $
        do it "can be transformed to binary output" $
-            bitStringPrinter (Proxy @(BitRecordOfDescriptor $ From Mp4AacLcEsDescriptor))
+            bitBuffer64Printer (Proxy @(BitRecordOfDescriptor $ From Mp4AacLcEsDescriptor))
                              False 0 0 0
                              (MkEnumValue (Proxy @'SF48000))
                              (MkEnumValue (Proxy @'SingleChannel))
@@ -53,7 +53,7 @@ spec =
             `shouldStartWith` "U8 := hex: 03 (dec: 3)\n"
      describe "Mp4HeAacEsDescriptor" $
        do it "can be transformed to binary output" $
-            bitStringPrinter (Proxy @(BitRecordOfDescriptor $ From Mp4HeAacEsDescriptor))
+            bitBuffer64Printer (Proxy @(BitRecordOfDescriptor $ From Mp4HeAacEsDescriptor))
                              False 0 0 0
                              (MkEnumValue (Proxy @'SF48000))
                              (MkEnumValue (Proxy @'SingleChannel))

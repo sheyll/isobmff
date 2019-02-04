@@ -4,56 +4,43 @@ module Data.Type.BitRecords.TypeLits where
 import           Data.Kind.Extra
 import           Data.Type.Pretty
 import           GHC.TypeLits
-import Data.Type.Bool
-import Data.Type.Equality (type (==))
-
 
 
 data TypeLit = MkTypeLit
 
-type ToTypeLit (t :: To TypeLit) = t 'MkTypeLit
-
 -- | Calculate the number of bits require to represent the given type literal value
-type family TypeLitBits (value :: k) :: Nat
+type family TypeLitBits (t :: Extends TypeLit) :: Nat
 
 -- | An empty type literal
-data EmptyLiteral :: To TypeLit where
-  MkEmptyLiteral ::EmptyLiteral 'MkTypeLit
+data EmptyLiteral :: Extends TypeLit
 
-type instance ToPretty 'MkEmptyLiteral = 'PrettyEmpty
-type instance TypeLitBits 'MkEmptyLiteral = 0
+type instance ToPretty EmptyLiteral = 'PrettyEmpty
+type instance TypeLitBits EmptyLiteral = 0
 
--- | A Signed type literal number
-data SignedNatLiteral :: To TypeLit where
-  Positive ::Nat -> SignedNatLiteral 'MkTypeLit
-  Negative ::Nat -> SignedNatLiteral 'MkTypeLit
+-- | A signed type literal number
+data NegativeNatLiteral ::Nat -> Extends TypeLit
 
-type instance ToPretty ('Positive x) = PutNat x
-type instance ToPretty ('Negative x) = PutStr "-" <++> PutNat x
-type instance TypeLitBits ('Positive v) = NatBits v + 1
-type instance TypeLitBits ('Negative v) = NatBits v + 1
+type instance ToPretty (NegativeNatLiteral x) = PutStr "-" <++> PutNat x
+type instance TypeLitBits (NegativeNatLiteral v) = NatBits v + 1
 
 -- | Passthrough predefined type literals
-data NatLiteral :: To TypeLit where
-  MkNat ::Nat -> NatLiteral 'MkTypeLit
+data NatLiteral :: Nat -> Extends TypeLit
 
-type instance ToPretty ('MkNat x) = PutBits x
-type instance TypeLitBits ('MkNat v ) = NatBits v
+type instance ToPretty (NatLiteral x) = PutBits x
+type instance TypeLitBits (NatLiteral v) = NatBits v
 
 -- | A Bool literal
-data FlagLiteral :: To TypeLit where
-  MkFlag ::Bool -> FlagLiteral 'MkTypeLit
+data FlagLiteral :: Bool -> Extends TypeLit
 
-type instance ToPretty ('MkFlag x ) = ToPretty x
-type instance TypeLitBits ('MkFlag v) = 1
+type instance ToPretty (FlagLiteral x) = ToPretty x
+type instance TypeLitBits (FlagLiteral v) = 1
 
 -- | A literal bit sequence. The sequence is validated, only
 -- zeros and ones are allowed.
-type family BitsLiteral (x :: [Nat])
-             :: ValidBitsLiteral (Length x) 'MkTypeLit
-  where BitsLiteral xs = 'MkValidBitsLiteral (ValidateBits xs xs)
+type family BitsLiteral (x :: [Nat]) :: Extends TypeLit
+  where BitsLiteral xs = ValidBitsLiteral (ValidateBits xs xs)
 
-type XXX = BitsLiteral '[1,0,1]
+type XXX = BitsLiteral '[1, 0, 1]
 
 type family ValidateBits (all :: [Nat]) (x :: [Nat]) :: [Nat] where
   ValidateBits ls '[] = '[]
@@ -66,16 +53,16 @@ type family ValidateBits (all :: [Nat]) (x :: [Nat]) :: [Nat] where
               ':<>: 'ShowType bad)
 
 -- | A literal bit sequence, use 'BitsLiteral' to construct this.
-data ValidBitsLiteral (bitCount :: Nat) :: To TypeLit where
-  MkValidBitsLiteral :: [Nat] -> ValidBitsLiteral n 'MkTypeLit
+data ValidBitsLiteral :: [Nat] -> Extends TypeLit
 
-type instance ToPretty ('MkValidBitsLiteral bs) = ToPrettyBitsLiteral bs
+type instance ToPretty (ValidBitsLiteral bs) =
+  ToPrettyBitsLiteral bs
 
 type family ToPrettyBitsLiteral bs where
   ToPrettyBitsLiteral '[] = 'PrettyEmpty
   ToPrettyBitsLiteral (x ': xs) = PutNat x <++> ToPrettyBitsLiteral xs
 
-type instance TypeLitBits ('MkValidBitsLiteral bs) = Length bs
+type instance TypeLitBits (ValidBitsLiteral bs) = Length bs
 
 type family Length xs where
   Length '[] = 0

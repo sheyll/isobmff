@@ -198,7 +198,7 @@ fromList l =
 -- * Constant fields
 
 -- | Wrapper around a field, e.g. a 'Scalar' or 'ScalarArray', with a type level
--- value. The wrapped content must implement 'FromTypeLit'. To get the value of
+-- value. The wrapped content must implement 'FromTypeLit'. Extends get the value of
 -- a 'Constant'  use 'fromTypeLit'.
 data Constant o v where
         Constant :: Constant o v

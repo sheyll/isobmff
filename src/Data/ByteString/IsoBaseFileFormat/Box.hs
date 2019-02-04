@@ -339,9 +339,9 @@ instance IsBoxContent Int64 where
 
 -- * Boxes of Bits
 
-instance IsBoxContent BuilderBox where
-  boxSize (MkBuilderBox !s _) = fromIntegral s
-  boxBuilder (MkBuilderBox _ !b) = b
+instance IsBoxContent BuilderWithSize where
+  boxSize (MkBuilderWithSize !s _) = fromIntegral s
+  boxBuilder (MkBuilderWithSize _ !b) = b
 
 -- * Type Layout Rule Matchers
 

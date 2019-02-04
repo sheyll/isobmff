@@ -2,7 +2,7 @@
 module Data.Type.BitRecords.Enum where
 
 import           Data.Type.BitRecords.Core
-import           Data.Type.BitRecords.Builder.BitBuffer
+import           Data.Type.BitRecords.Builder.BitBuffer64
 import           Data.FunctionBuilder
 import           Data.Type.BitRecords.Builder.LazyByteStringBuilder
 import           Data.Proxy
@@ -18,12 +18,12 @@ import           Data.Type.Pretty
 -- the clauses of the (sum) type.
 data EnumOf enum where
   MkEnumOf
-    ::To (EnumField enum size)
-    -> To (FieldValue label enum)
+    ::Extends (EnumField enum size)
+    -> Extends (FieldValue label enum)
     -> BitRecord
     -> EnumOf enum
 
-type BitRecordOfEnum (e :: To (EnumOf enum))
+type BitRecordOfEnum (e :: Extends (EnumOf enum))
   = (RenderEnumOf (From e) :: BitRecord)
 
 type family RenderEnumOf (e :: EnumOf enum) :: BitRecord where
@@ -33,11 +33,11 @@ type family RenderEnumOf (e :: EnumOf enum) :: BitRecord where
 -- | Physical representation of an 'EnumOf', this is an abstract type
 data EnumField (enum :: Type) (size :: Nat)
 
-type BitRecordFieldOfEnumField (x :: To (EnumField e s))
+type BitRecordFieldOfEnumField (x :: Extends (EnumField e s))
   = MkField ( 'MkFieldCustom :: BitField (EnumValue e) e s)
 
 -- | A fixed size 'EnumField'
-data FixedEnum (enum :: Type) (size :: Nat) :: To (EnumField enum size)
+data FixedEnum (enum :: Type) (size :: Nat) :: Extends (EnumField enum size)
 
 -- | An enum that can be extended with an additional 'BitRecordField', following
 -- the  regular enum field; the extension is optional, i.e. only if the
@@ -45,13 +45,13 @@ data FixedEnum (enum :: Type) (size :: Nat) :: To (EnumField enum size)
 data ExtEnum (enum :: Type)
              (size :: Nat)
              (extInd :: enum)
-             (extField :: To (BitRecordField (t :: BitField rt0 (st0 :: k0) len0)))
-             :: To (EnumField enum size)
+             (extField :: Extends (BitRecordField (t :: BitField rt0 (st0 :: k0) len0)))
+             :: Extends (EnumField enum size)
 
 -- | Create an 'EnumOf' that sets an enum to a static value.
-data SetEnum (l :: Symbol) (ef :: To (EnumField enum size)) (v :: enum) :: To (EnumOf enum)
+data SetEnum (l :: Symbol) (ef :: Extends (EnumField enum size)) (v :: enum) :: Extends (EnumOf enum)
 
-type instance From (SetEnum (l :: Symbol) (ei :: To (EnumField enum size)) value) =
+type instance From (SetEnum (l :: Symbol) (ei :: Extends (EnumField enum size)) value) =
   'MkEnumOf
      ei
      (StaticFieldValue l value)
@@ -60,17 +60,17 @@ type instance From (SetEnum (l :: Symbol) (ei :: To (EnumField enum size)) value
 -- | Create an 'EnumOf' that sets the enum to a runtime value.
 data EnumParam
      (label :: Symbol)
-     (ef :: To (EnumField (enum :: Type) (size :: Nat)))
-     :: To (EnumOf enum)
-type instance From (EnumParam label (ei :: To (EnumField enum size))) =
+     (ef :: Extends (EnumField (enum :: Type) (size :: Nat)))
+     :: Extends (EnumOf enum)
+type instance From (EnumParam label (ei :: Extends (EnumField enum size))) =
   'MkEnumOf
      ei
      (RuntimeFieldValue label)
      'EmptyBitRecord
 
 -- | Create an 'EnumOf' that sets an extended enum to an extended static value.
-data SetEnumAlt (l :: Symbol) (ef :: To (EnumField (enum :: Type) (size :: Nat))) (v :: k)
-  :: To (EnumOf enum)
+data SetEnumAlt (l :: Symbol) (ef :: Extends (EnumField (enum :: Type) (size :: Nat))) (v :: k)
+  :: Extends (EnumOf enum)
 
 type instance From (SetEnumAlt (l :: Symbol) (ExtEnum enum size extInd extField) value) =
   -- TODO maybe enrich the demoteRep type of 'MkField??
@@ -86,8 +86,8 @@ type instance From (SetEnumAlt (l :: Symbol) (FixedEnum enum size) value) =
 -- | Create an 'EnumOf' that sets the extended enum to a runtime value.
 data EnumParamAlt
   (label :: Symbol)
-  (ef :: To (EnumField (enum :: Type) (size :: Nat)))
-  :: To (EnumOf enum)
+  (ef :: Extends (EnumField (enum :: Type) (size :: Nat)))
+  :: Extends (EnumOf enum)
 
 type instance From (EnumParamAlt label (ExtEnum enum size extInd extField)) =
   'MkEnumOf
@@ -123,25 +123,25 @@ fromEnumValue (MkEnumValue p) = enumValue p
   enumValue _ = fromIntegral (natVal (Proxy @(FromEnum enum v)))
 
 instance
-  forall (size :: Nat) r e (v :: e) (f :: To (BitRecordField ('MkFieldCustom :: BitField (EnumValue e) e size))) .
+  forall (size :: Nat) r e (v :: e) (f :: Extends (BitRecordField ('MkFieldCustom :: BitField (EnumValue e) e size))) .
     (KnownNat (FromEnum e v), KnownChunkSize size) =>
-  BitStringBuilderHoley (Proxy (f := v)) r where
-  bitStringBuilderHoley _ = immediate
-    (appendBitString
-      (bitStringProxyLength (Proxy @size)
-                            (fromIntegral (natVal (Proxy @(FromEnum e v))))
+  HasBitBuilder (Proxy (f := v)) r where
+  bitBuffer64BuilderHoley _ = immediate
+    (appendBitBuffer64
+      (bitBuffer64ProxyLength (Proxy @size)
+                              (fromIntegral (natVal (Proxy @(FromEnum e v))))
       )
     )
 
 instance
   forall (size :: Nat) r e  .
   (KnownChunkSize size) =>
-  BitStringBuilderHoley (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r
+  HasBitBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r
   where
-  type ToBitStringBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r =
+  type ToBitBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r =
     EnumValue e -> r
-  bitStringBuilderHoley _ = addParameter
-    (appendBitString . bitStringProxyLength (Proxy @size) . fromEnumValue)
+  bitBuffer64BuilderHoley _ = addParameter
+    (appendBitBuffer64 . bitBuffer64ProxyLength (Proxy @size) . fromEnumValue)
 
 type instance ToPretty (EnumValue e) = PutStr "<<enum>>"
 type instance PrettyCustomFieldValue (EnumValue e) e size (v :: e) =

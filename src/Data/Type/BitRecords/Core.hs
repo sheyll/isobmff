@@ -39,163 +39,6 @@ import           Data.Word
 import           Data.Bits
 import           GHC.TypeLits
 import           Text.Printf
-import Data.Tagged
-import Data.Type.Bool
-import Data.Type.Equality (type (==))
-import Numeric.Natural
-import Test.TypeSpec
-
--- | The number of bits that a structure with a predetermined fixed length requires.
-type family BitCount (t :: To Structure) :: Nat
-
--- | The type signature of a constructor (function) for a structure
-type family Constructor (t :: To Structure) (next) :: k
-
--- | Phantom type for structured data
-data Structure = MkStructure
-
-type instance BitCount (Anonymous (Name name struct)) = BitCount struct
-type instance Constructor (Anonymous (Name name struct)) next = Constructor struct next
-
--- | Empty Structure
-data EmptyStructure :: To Structure
-
-type instance BitCount EmptyStructure = 0
-type instance Constructor EmptyStructure next = next
-
-
--- | A 'NamedStructure' composed of a list of other structures in natural order.
-data CompoundStructure :: [To (Named Structure)] -> To Structure
-
-type instance BitCount (CompoundStructure '[]) = 0
-type instance BitCount (CompoundStructure (Name n x ': xs)) = BitCount x + BitCount (CompoundStructure xs)
-
-type instance Constructor (CompoundStructure ('[] :: [To (Named Structure)])) next = next
-type instance Constructor (CompoundStructure (Name n x ': xs)) next = Constructor x (Constructor (CompoundStructure xs) next)
-
--- | A fixed length sequence of bits.
-data BitSequence (length :: Nat) :: To Structure
-
-type instance BitCount (BitSequence n) = n
-type instance Constructor (BitSequence length) next =
-  If (length <=? 64 && 1 <=? length )
-    (Word64 -> next) (TypeError ('Text "invalid bit sequence length: " ':<>: 'ShowType length))
-
-type (>..) name rest = Name name (BitSequence 2) ': rest
-type (>...) name rest = Name name (BitSequence 3) ': rest
-type (>....) name rest = Name name (BitSequence 4) ': rest
-type (>....:.) name rest = Name name (BitSequence 5) ': rest
-type (>....:..) name rest = Name name (BitSequence 6) ': rest
-type (>....:...) name rest = Name name (BitSequence 7) ': rest
-type (>....:....) name rest = Name name (BitSequence 8) ': rest
-infixr 1 >..
-infixr 1 >...
-infixr 1 >....
-infixr 1 >....:.
-infixr 1 >....:..
-infixr 1 >....:...
-infixr 1 >....:....
--- ** Integer Sequences
-
--- | A Wrapper for Haskell types. Users should implement the 'BitCount' and 'Constructor' instances.
-data TypeStructure :: Type -> To Structure
-
-type U8 = TypeStructure Word8
-type instance BitCount (TypeStructure Word8) = 8
-type instance Constructor (TypeStructure Word8) next = Word8 -> next
-
-type S8 = TypeStructure Int8
-type instance BitCount (TypeStructure Int8) = 8
-type instance Constructor (TypeStructure Int8) next = Int8 -> next
-
-type FlagStructure = TypeStructure Bool
-type instance BitCount (TypeStructure Bool) = 1
-type instance Constructor (TypeStructure Bool) next = Bool -> next
-
--- | Structure holding integral numbers
-data IntegerStructure :: Nat -> Sign -> Endianess -> To Structure where
-  S16LE :: Int16 -> IntegerStructure 16 'Signed 'LE 'MkStructure
-  S16BE :: Int16 -> IntegerStructure 16 'Signed 'BE 'MkStructure
-  U16LE :: Word16 -> IntegerStructure 16 'Unsigned 'LE 'MkStructure
-  U16BE :: Word16 -> IntegerStructure 16 'Unsigned 'BE 'MkStructure
-  S32LE :: Int32 -> IntegerStructure 32 'Signed 'LE 'MkStructure
-  S32BE :: Int32 -> IntegerStructure 32 'Signed 'BE 'MkStructure
-  U32LE :: Word32 -> IntegerStructure 32 'Unsigned 'LE 'MkStructure
-  U32BE :: Word32 -> IntegerStructure 32 'Unsigned 'BE 'MkStructure
-  S64LE :: Int64 -> IntegerStructure 64 'Signed 'LE 'MkStructure
-  S64BE :: Int64 -> IntegerStructure 64 'Signed 'BE 'MkStructure
-  U64LE :: Word64 -> IntegerStructure 64 'Unsigned 'LE 'MkStructure
-  U64BE :: Word64 -> IntegerStructure 64 'Unsigned 'BE 'MkStructure
-
--- | Endianess of an 'IntegerStructure'
-data Endianess = LE | BE
-
--- | Integer sign of an 'IntegerStructure'
-data Sign = Signed | Unsigned
-
-type instance BitCount (IntegerStructure n s e) =
-  If (n == 16) 16 (If (n == 32) 32 (If (n == 64) 64 (TypeError ('Text "Invalid size in: " ':<>: 'ShowType (IntegerStructure n s e)))))
-type instance Constructor (IntegerStructure n s e) next   = IntegerStructure n s e 'MkStructure -> next
-
-type U n e = IntegerStructure n 'Unsigned e
-type S n e = IntegerStructure n 'Signed e
-
-data ConstantStructure :: Nat -> To Structure -> To Structure
-type instance BitCount (ConstantStructure n s) = BitCount s
-type instance Constructor (ConstantStructure val struct) next = next
-
-data ConditionalStructure (condition :: Bool) (ifStruct :: To Structure) (elseStruct :: To Structure) :: To Structure
-
-type instance BitCount (ConditionalStructure 'True l r) = BitCount l
-type instance BitCount (ConditionalStructure 'False l r) = BitCount r
-
-type instance Constructor (ConditionalStructure 'True l r) next = Constructor l next
-type instance Constructor (ConditionalStructure 'False l r) next = Constructor r next
-
-data BoolProxy (t :: Bool) where
-  TrueProxy :: BoolProxy 'True
-  FalseProxy :: BoolProxy 'False
-
-_typeSpecBitCount :: BoolProxy (testBool :: Bool) ->
-              Expect [ BitCount U8 `ShouldBe` 8
-                     , BitCount EmptyStructure `ShouldBe` 0
-                     , BitCount (CompoundStructure [Name "x" U8, Name "y" U8]) `ShouldBe` 16
-                     , BitCount (S 16 'BE) `ShouldBe` 16
-                     , BitCount (ConditionalStructure testBool (U 32 'LE) S8) `ShouldBe` (If testBool 32 8)
-                     , BitCount (CompoundStructure ("field 1" >... "field 2" >.. "field 3" >....:.
-                                         '[Name "field 4" (CompoundStructure ("field 4.1" >... "field 4.2" >....:.. '[]))])) `ShouldBe` 19
-                     , BitCount (ConstantStructure 110 (BitSequence 4)) `ShouldBe` 4
-                     ]
-_typeSpecBitCount TrueProxy = Valid
-_typeSpecBitCount FalseProxy = Valid
-
-_constructorSpec :: ()
-_constructorSpec =
-    (undefined :: Constructor U8 ())          (undefined :: Word8 )
-  <> (undefined :: Constructor S8 ())         (undefined :: Int8 )
-  <> (undefined :: Constructor FlagStructure ()) (undefined :: Bool )
-  <> (undefined :: Constructor (S 16 'BE) ()) (undefined :: IntegerStructure 16 'Signed 'BE  'MkStructure )
-  <> (undefined :: Constructor (U 16 'BE) ()) (undefined :: IntegerStructure 16 'Unsigned 'BE  'MkStructure )
-  <> (undefined :: Constructor (S 16 'LE) ()) (undefined :: IntegerStructure 16 'Signed 'LE  'MkStructure )
-  <> (undefined :: Constructor (U 16 'LE) ()) (undefined :: IntegerStructure 16 'Unsigned 'LE  'MkStructure )
-  <> (undefined :: Constructor (S 32 'BE) ()) (undefined :: IntegerStructure 32 'Signed 'BE  'MkStructure )
-  <> (undefined :: Constructor (U 32 'BE) ()) (undefined :: IntegerStructure 32 'Unsigned 'BE  'MkStructure )
-  <> (undefined :: Constructor (S 32 'LE) ()) (undefined :: IntegerStructure 32 'Signed 'LE  'MkStructure )
-  <> (undefined :: Constructor (U 32 'LE) ()) (undefined :: IntegerStructure 32 'Unsigned 'LE  'MkStructure )
-  <> (undefined :: Constructor (S 64 'BE) ()) (undefined :: IntegerStructure 64 'Signed 'BE  'MkStructure )
-  <> (undefined :: Constructor (U 64 'BE) ()) (undefined :: IntegerStructure 64 'Unsigned 'BE  'MkStructure )
-  <> (undefined :: Constructor (S 64 'LE) ()) (undefined :: IntegerStructure 64 'Signed 'LE  'MkStructure )
-  <> (undefined :: Constructor (U 64 'LE) ()) (undefined :: IntegerStructure 64 'Unsigned 'LE  'MkStructure )
-  <> (undefined :: Constructor (Anonymous (Name "foo" U8)) ()) (undefined :: Word8 )
-  <> (undefined :: Constructor (ConstantStructure 110 U8) ())
-  <> (undefined :: Constructor (CompoundStructure '[]) ())
-  <> (undefined :: Constructor EmptyStructure ())
-  <> (undefined :: Constructor (BitSequence 15) ()) (undefined :: Word64)
-  <> (undefined :: Constructor (ConditionalStructure  'True  (CompoundStructure '[]) U8) ())
-  <> (undefined :: Constructor (ConditionalStructure  'False  (CompoundStructure '[]) U8) ()) (undefined :: Word8)
-  <> (undefined :: Constructor (CompoundStructure '[Name "x" U8, Name "y" S8]) ()) (undefined :: Word8 ) (undefined :: Int8 )
-  <> (undefined :: Constructor (CompoundStructure '[Name "x" U8, Name "y" S8, Name "z" S8]) ()) (undefined :: Word8 ) (undefined :: Int8 ) (undefined :: Int8 )
-
 
 -- * Bit-Records
 
@@ -205,8 +48,8 @@ _constructorSpec =
 -- | 'BitRecordField's assembly
 data BitRecord where
   EmptyBitRecord     :: BitRecord
-  BitRecordMember    :: To (BitRecordField t) -> BitRecord
-  RecordField        :: To (BitField rt st size) -> BitRecord
+  BitRecordMember    :: Extends (BitRecordField t) -> BitRecord
+  RecordField        :: Extends (BitField rt st size) -> BitRecord
   BitRecordAppend    :: BitRecord -> BitRecord -> BitRecord
   -- TODO  MissingBitRecord          :: ErrorMessage     -> BitRecord
 
@@ -265,20 +108,20 @@ getRecordSizeFromProxy
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (SizeInBits rec))
 
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
-type OptionalRecordOf (f :: To (s -> To BitRecord)) (x :: Maybe s)
-  = (Optional (Konst 'EmptyBitRecord) f $ x :: To BitRecord)
+type OptionalRecordOf (f :: Extends (s -> Extends BitRecord)) (x :: Maybe s)
+  = (Optional (Konst 'EmptyBitRecord) f $ x :: Extends BitRecord)
 
 -- ** Record composition
 
 -- | Combine two 'BitRecord's to form a new 'BitRecord'. If the parameters are
 -- not of type 'BitRecord' they will be converted.
-data (:+^) (l :: BitRecord) (r :: To BitRecord) :: To BitRecord
+data (:+^) (l :: BitRecord) (r :: Extends BitRecord) :: Extends BitRecord
 infixl 3 :+^
 type instance From (l :+^ r) = l `Append` From r
 
 -- | Combine two 'BitRecord's to form a new 'BitRecord'. If the parameters are
 -- not of type 'BitRecord' they will be converted.
-data (:^+) (l :: To BitRecord) (r :: BitRecord) :: To BitRecord
+data (:^+) (l :: Extends BitRecord) (r :: BitRecord) :: Extends BitRecord
 infixl 3 :^+
 type instance From (l :^+ r) = From l `Append` r
 
@@ -293,26 +136,26 @@ type family Append (l :: BitRecord) (r :: BitRecord) :: BitRecord where
   Append l r = 'BitRecordAppend l r
 
 -- | Append a 'BitRecord' and a 'BitRecordField'
-type (:+.) (r :: BitRecord) (f :: To (BitRecordField t1))
+type (:+.) (r :: BitRecord) (f :: Extends (BitRecordField t1))
   = Append r ( 'BitRecordMember f)
 infixl 6 :+.
 
 -- | Append a 'BitRecordField' and a 'BitRecord'
-type (.+:) (f :: To (BitRecordField t1)) (r :: BitRecord)
+type (.+:) (f :: Extends (BitRecordField t1)) (r :: BitRecord)
   = Append ( 'BitRecordMember f) r
 infixr 6 .+:
 
 -- | Append a 'BitRecordField' and a 'BitRecordField' forming a 'BitRecord' with
 -- two members.
-type (.+.) (l :: To (BitRecordField t1)) (r :: To (BitRecordField t2))
+type (.+.) (l :: Extends (BitRecordField t1)) (r :: Extends (BitRecordField t2))
   = Append ( 'BitRecordMember l) ( 'BitRecordMember r)
 infixr 6 .+.
 
 -- | Set a field to either a static, compile time, value or a dynamic, runtime value.
 type family (:~)
-  (field :: To (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat))))
-  (value :: To (FieldValue (label :: Symbol) st))
-  :: To (BitRecordField t) where
+  (field :: Extends (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat))))
+  (value :: Extends (FieldValue (label :: Symbol) st))
+  :: Extends (BitRecordField t) where
   fld :~ StaticFieldValue l v  = (l @: fld) := v
   fld :~ RuntimeFieldValue l = l @: fld
 infixl 7 :~
@@ -321,9 +164,9 @@ infixl 7 :~
 -- | Like ':~' but for a 'Maybe' parameter. In case of 'Just' it behaves like ':~'
 -- in case of 'Nothing' it return an 'EmptyBitRecord'.
 type family (:~?)
-  (fld :: To (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat))))
-  (value :: Maybe (To (FieldValue (label :: Symbol) st)))
-  :: To BitRecord where
+  (fld :: Extends (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat))))
+  (value :: Maybe (Extends (FieldValue (label :: Symbol) st)))
+  :: Extends BitRecord where
   fld :~? ('Just v) = RecordField (fld :~ v)
   fld :~? 'Nothing  = Konst 'EmptyBitRecord
 infixl 7 :~?
@@ -331,8 +174,8 @@ infixl 7 :~?
 -- | Like ':~' but for a 'Maybe' parameter. In case of 'Just' it behaves like ':~'
 -- in case of 'Nothing' it return an 'EmptyBitRecord'.
 type family (:+?)
-  (fld :: To (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat))))
-  (value :: Maybe (To (FieldValue (label :: Symbol) st)))
+  (fld :: Extends (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat))))
+  (value :: Maybe (Extends (FieldValue (label :: Symbol) st)))
   :: BitRecord where
   fld :+? ('Just v) = 'BitRecordMember (fld :~ v)
   fld :+? 'Nothing  = 'EmptyBitRecord
@@ -341,8 +184,8 @@ infixl 7 :+?
 -- | The field value parameter for ':~', either a static, compile time, value or
 -- a dynamic, runtime value.
 data FieldValue :: Symbol -> staticRep -> Type
-data StaticFieldValue (label :: Symbol) :: staticRep -> To (FieldValue label staticRep)
-data RuntimeFieldValue (label :: Symbol) :: To (FieldValue label staticRep)
+data StaticFieldValue (label :: Symbol) :: staticRep -> Extends (FieldValue label staticRep)
+data RuntimeFieldValue (label :: Symbol) :: Extends (FieldValue label staticRep)
 
 -- *** Record Arrays and Repitition
 
@@ -352,7 +195,7 @@ data RuntimeFieldValue (label :: Symbol) :: To (FieldValue label staticRep)
 -- | An array of records with a fixed number of elements, NOTE: this type is
 -- actually not really necessary since 'ReplicateRecord' exists, but this allows
 -- to have a different 'showRecord' output.
-data RecArray :: BitRecord -> Nat -> To BitRecord
+data RecArray :: BitRecord -> Nat -> Extends BitRecord
 
 type r ^^ n = RecArray r n
 infixl 5 ^^
@@ -370,21 +213,21 @@ type family RecArrayToBitRecord (r :: BitRecord) (n :: Nat) :: BitRecord where
 -- | Let type level lists also be records
 data
     BitRecordOfList
-      (f  :: To (foo -> BitRecord))
+      (f  :: Extends (foo -> BitRecord))
       (xs :: [foo])
-      :: To BitRecord
+      :: Extends BitRecord
 
 type instance From (BitRecordOfList f xs) =
   FoldMap BitRecordAppendFun 'EmptyBitRecord f xs
 
 type BitRecordAppendFun = Fun1 BitRecordAppendFun_
-data BitRecordAppendFun_ :: BitRecord -> To (BitRecord -> BitRecord)
+data BitRecordAppendFun_ :: BitRecord -> Extends (BitRecord -> BitRecord)
 type instance Apply (BitRecordAppendFun_ l) r = Append l r
 
 -- *** Maybe Record
 
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
-data OptionalRecord :: Maybe BitRecord -> To BitRecord
+data OptionalRecord :: Maybe BitRecord -> Extends BitRecord
 type instance From (OptionalRecord ('Just t)) = t
 type instance From (OptionalRecord 'Nothing)  = 'EmptyBitRecord
 
@@ -403,32 +246,32 @@ data MkField t :: BitRecordField t -> Type
 -- **** Setting a Label
 
 -- | A bit record field with a number of bits
-data LabelF :: Symbol -> To (BitRecordField t) -> To (BitRecordField t)
+data LabelF :: Symbol -> Extends (BitRecordField t) -> Extends (BitRecordField t)
 
 
 -- | A field with a label assigned to it.
-type (l :: Symbol) @: (f :: To
+type (l :: Symbol) @: (f :: Extends
   (BitRecordField (t :: BitField rt (st :: stk) size)))
-  = (LabelF l f :: To (BitRecordField t))
+  = (LabelF l f :: Extends (BitRecordField t))
 infixr 8 @:
 
 -- | A field with a label assigned to it.
-type (l :: Symbol) @:: (f :: To a) = Labelled l f
+type (l :: Symbol) @:: (f :: Extends a) = Labelled l f
 infixr 8 @::
 
 -- **** Assignment
 
 -- | A field with a value set at compile time.
 data (:=) :: forall st (t :: BitField rt st size) .
-            To (BitRecordField t)
+            Extends (BitRecordField t)
           -> st
-          -> To (BitRecordField t)
+          -> Extends (BitRecordField t)
 infixl 7 :=
 
 -- | A field with a value set at compile time.
-data (:=.) :: To (BitField rt st size)
+data (:=.) :: Extends (BitField rt st size)
            -> st
-           -> To (BitField rt st size)
+           -> Extends (BitField rt st size)
 infixl 7 :=.
 
 -- | Types of this kind define the basic type of a 'BitRecordField'. Sure, this
@@ -463,7 +306,7 @@ type family BitFieldSize (b :: BitField rt st size) :: Nat where
 type Flag = MkField 'MkFieldFlag
 type Field n = MkField ( 'MkFieldBits :: BitField (B n) Nat n)
 type FieldU8 = MkField 'MkFieldU8
-type FieldU16 = Konst 'MkFieldU16
+type FieldU16 = MkField 'MkFieldU16
 type FieldU32 =  Konst 'MkFieldU32
 type FieldU64 = MkField 'MkFieldU64
 type FieldI8 = MkField 'MkFieldI8
@@ -488,34 +331,34 @@ data SignedNat where
 -- *** Composed Fields
 
 -- | A Flag (1-bit) that is true if the type level maybe is 'Just'.
-type family FlagJust (a :: Maybe (v :: Type)) :: To (BitRecordField 'MkFieldFlag) where
+type family FlagJust (a :: Maybe (v :: Type)) :: Extends (BitRecordField 'MkFieldFlag) where
   FlagJust ('Just x) = Flag := 'True
   FlagJust 'Nothing  = Flag := 'False
 
 -- | A Flag (1-bit) that is true if the type level maybe is 'Nothing'.
-type family FlagNothing  (a :: Maybe (v :: Type)) :: To (BitRecordField 'MkFieldFlag) where
+type family FlagNothing  (a :: Maybe (v :: Type)) :: Extends (BitRecordField 'MkFieldFlag) where
   FlagNothing ('Just x) = Flag := 'False
   FlagNothing 'Nothing  = Flag := 'True
 
 -- | An optional field in a bit record
-data MaybeField :: Maybe (To (BitRecordField t)) -> To BitRecord
+data MaybeField :: Maybe (Extends (BitRecordField t)) -> Extends BitRecord
 type instance From (MaybeField ('Just  fld)) = 'BitRecordMember fld
 type instance From (MaybeField 'Nothing) = 'EmptyBitRecord
 
 -- | A 'BitRecordField' can be used as 'BitRecordMember'
-data RecordField :: To (BitRecordField t) -> To BitRecord
+data RecordField :: Extends (BitRecordField t) -> Extends BitRecord
 type instance From (RecordField f) = 'BitRecordMember f
 
 -- | Calculate the size as a number of bits from a 'BitRecordField'
-type family FieldWidth (x :: To (BitRecordField t)) where
-  FieldWidth (x :: To (BitRecordField (t :: BitField rt st size))) = size
+type family FieldWidth (x :: Extends (BitRecordField t)) where
+  FieldWidth (x :: Extends (BitRecordField (t :: BitField rt st size))) = size
 
 -- * Field and Record PrettyType Instances
 
 -- | Render @rec@ to a pretty, human readable form. Internally this is a wrapper
 -- around 'ptShow' using 'PrettyRecord'.
 showARecord
-  :: forall proxy (rec :: To BitRecord)
+  :: forall proxy (rec :: Extends BitRecord)
    . PrettyTypeShow (PrettyRecord (From rec))
   => proxy rec
   -> String
@@ -538,17 +381,17 @@ type family PrettyRecord (rec :: BitRecord) :: PrettyType where
    PrettyRecord ' EmptyBitRecord = 'PrettyNewline
    PrettyRecord ('BitRecordAppend l r) = PrettyRecord l <$$> PrettyRecord r
 
-type instance ToPretty (f :: To (BitRecordField t)) = PrettyField f
+type instance ToPretty (f :: Extends (BitRecordField t)) = PrettyField f
 
-type family PrettyRecordField (f :: To (BitField (rt :: Type) (st :: Type) (size :: Nat))) :: PrettyType where
+type family PrettyRecordField (f :: Extends (BitField (rt :: Type) (st :: Type) (size :: Nat))) :: PrettyType where
   PrettyRecordField (Konst t) = PrettyFieldType t
   PrettyRecordField (f :=. v) =
     PrettyRecordField f <+> PutStr ":=" <+> PrettyFieldValue (From f) v
   PrettyRecordField (Labelled l f) = l <:> PrettyRecordField f
 
-type family PrettyField (f :: To (BitRecordField (t :: BitField (rt :: Type) (st :: Type) (size :: Nat)))) :: PrettyType where
+type family PrettyField (f :: Extends (BitRecordField (t :: BitField (rt :: Type) (st :: Type) (size :: Nat)))) :: PrettyType where
   PrettyField (MkField t) = PrettyFieldType t
-  PrettyField ((f :: To (BitRecordField t)) := v) =
+  PrettyField ((f :: Extends (BitRecordField t)) := v) =
     PrettyField f <+> PutStr ":=" <+> PrettyFieldValue t v
   PrettyField (LabelF l f) = l <:> PrettyField f
 

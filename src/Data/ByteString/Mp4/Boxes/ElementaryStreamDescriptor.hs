@@ -11,43 +11,43 @@ import           Data.ByteString.Mp4.Boxes.SyncLayerConfigDescriptor
 -- * Esd Box
 
 type EsdBox = Box (FullBox Esd 0)
-newtype Esd = Esd BuilderBox deriving (IsBoxContent)
+newtype Esd = Esd BuilderWithSize deriving (IsBoxContent)
 instance IsBox Esd
 
 type instance BoxTypeSymbol Esd = "esds"
 
-esdBox :: forall (record :: To (Descriptor 'ES_Descr)) (rendered :: BitRecord) .
-         ( BitStringBuilderHoley (Proxy rendered) EsdBox
+esdBox :: forall (record :: Extends (Descriptor 'ES_Descr)) (rendered :: BitRecord) .
+         ( HasBitBuilder (Proxy rendered) EsdBox
          , rendered ~ (RenderEsDescr record))
-       => Proxy record -> ToBitStringBuilder (Proxy rendered) EsdBox
+       => Proxy record -> ToBitBuilder (Proxy rendered) EsdBox
 esdBox =
   toFunction
   . esdBoxHoley
 
-esdBoxHoley :: forall (record :: To (Descriptor 'ES_Descr)) r (rendered :: BitRecord) .
-               ( BitStringBuilderHoley (Proxy rendered) r
+esdBoxHoley :: forall (record :: Extends (Descriptor 'ES_Descr)) r (rendered :: BitRecord) .
+               ( HasBitBuilder (Proxy rendered) r
                , rendered ~ (RenderEsDescr record)
                )
-             => Proxy record -> FunctionBuilder EsdBox r (ToBitStringBuilder (Proxy rendered) r)
+             => Proxy record -> FunctionBuilder EsdBox r (ToBitBuilder (Proxy rendered) r)
 esdBoxHoley _p =
   mapAccumulator (fullBox 0 . Esd) $
-  bitBuilderBoxHoley (Proxy @rendered)
+  builderBoxConstructor (Proxy @rendered)
 
-type RenderEsDescr (d :: To (Descriptor 'ES_Descr)) =
+type RenderEsDescr (d :: Extends (Descriptor 'ES_Descr)) =
   BitRecordOfDescriptor $ (From d)
 
 -- * Esd Record
 
 data ESDescriptor
-  :: To (FieldValue "esId" Nat)
-  -> Maybe (To (FieldValue "depEsId" Nat))
+  :: Extends (FieldValue "esId" Nat)
+  -> Maybe (Extends (FieldValue "depEsId" Nat))
     -- TODO Improve the custom field and also the sizedstring API
-  -> Maybe (To (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString (urlSize :: Nat))))
-  -> Maybe (To (FieldValue "ocrEsId" Nat))
-  -> To (FieldValue "streamPrio" Nat)
-  -> To (Descriptor 'DecoderConfigDescr)
-  -> To (Descriptor 'SLConfigDescr)
-  -> To (Descriptor 'ES_Descr)
+  -> Maybe (Extends (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString (urlSize :: Nat))))
+  -> Maybe (Extends (FieldValue "ocrEsId" Nat))
+  -> Extends (FieldValue "streamPrio" Nat)
+  -> Extends (Descriptor 'DecoderConfigDescr)
+  -> Extends (Descriptor 'SLConfigDescr)
+  -> Extends (Descriptor 'ES_Descr)
 
 -- | ISO-14496-14 section 3.1.2 defines restrictions of the elementary stream
 -- descriptor.
@@ -64,7 +64,7 @@ type DefaultStreamPrio = StaticFieldValue "streamPrio" 0
 type instance
   From (ESDescriptor esId depEsId url ocrEsId streamPrio decConfig slConfig) =
   'MkDescriptor
-     (Labelled "esId" FieldU16 :~ esId
+     ("esId" @: FieldU16 :~ esId
       .+: "depEsIdFlag" @: FlagJust depEsId
       .+: "urlFlag" @: FlagJust url
       .+: "ocrEsIdFlag" @: FlagJust ocrEsId

@@ -79,26 +79,26 @@ lumpUp :: Word64 -> L.Builder -> [Word8]
 lumpUp m = L.unpack . L.toLazyByteString . mconcat . replicate (fromIntegral m)
 
 static64 m = lumpUp m $
-    runBitStringBuilderHoley $ bitStringBuilderHoley (Proxy :: Proxy Static64)
+    runBitBuilderHoley $ bitBuffer64BuilderHoley (Proxy :: Proxy Static64)
 
 static64WithParam m = lumpUp m $
-    runBitStringBuilderHoley (bitStringBuilderHoley (Proxy :: Proxy Static64WithParams))
+    runBitBuilderHoley (bitBuffer64BuilderHoley (Proxy :: Proxy Static64WithParams))
                         (B m)
                         (B m)
 
 #ifdef FULLBENCHMARKS
 
 static128 m =
-  lumpUp m $ runBitStringBuilderHoley $ bitStringBuilderHoley (Proxy :: Proxy Static128)
+  lumpUp m $ runBitBuilderHoley $ bitBuffer64BuilderHoley (Proxy :: Proxy Static128)
 
 static256 m =
-  lumpUp m $ runBitStringBuilderHoley $ bitStringBuilderHoley (Proxy :: Proxy Static256)
+  lumpUp m $ runBitBuilderHoley $ bitBuffer64BuilderHoley (Proxy :: Proxy Static256)
 
 static517 m =
-  lumpUp m $ runBitStringBuilderHoley $ bitStringBuilderHoley (Proxy :: Proxy Static517)
+  lumpUp m $ runBitBuilderHoley $ bitBuffer64BuilderHoley (Proxy :: Proxy Static517)
 
 staticPlain512bitBaseline m =
-  lumpUp m $ runBitStringBuilderHoley $ bitStringBuilderHoley
+  lumpUp m $ runBitBuilderHoley $ bitBuffer64BuilderHoley
     (Proxy :: Proxy (
       Field 64 .+. Field 64 .+. Field 64 .+. Field 64 .+.
       Field 64 .+. Field 64 .+. Field 64 .+. Field 64
@@ -157,37 +157,37 @@ main = do
                                       nf staticPlain512bitBaseline 1000
                                   ]
 #endif
-                         , bgroup "BitString Word64 direct"
+                         , bgroup "BitBuffer64 Word64 direct"
                                   [ bench "1" $
-                                      nf bitStringWord64Direct 1
+                                      nf bitBuffer64Word64Direct 1
                                   , bench "100" $
-                                      nf bitStringWord64Direct 5
+                                      nf bitBuffer64Word64Direct 5
                                   , bench "1000" $
-                                      nf bitStringWord64Direct 1000
+                                      nf bitBuffer64Word64Direct 1000
                                   ]
-                         , bgroup "BitString Word64 holey"
+                         , bgroup "BitBuffer64 Word64 holey"
                                   [ bench "1" $
-                                      nf bitStringWord64Holey 1
+                                      nf bitBuffer64Word64Holey 1
                                   , bench "100" $
-                                      nf bitStringWord64Holey 5
+                                      nf bitBuffer64Word64Holey 5
                                   , bench "1000" $
-                                      nf bitStringWord64Holey 1000
+                                      nf bitBuffer64Word64Holey 1000
                                   ]
                          ]
                 ]
 
-bitStringWord64Direct m =
+bitBuffer64Word64Direct m =
   lumpUp 1
-    $ runBitStringBuilder
+    $ runBitBuilder
     $ mconcat
     $ replicate m
-    $ appendBitString
-    $ bitString 64 0x01020304050607
+    $ appendBitBuffer64
+    $ bitBuffer64 64 0x01020304050607
 
-bitStringWord64Holey m =
+bitBuffer64Word64Holey m =
   lumpUp 1
-    $ runBitStringBuilderHoley
+    $ runBitBuilderHoley
     $ mconcat
     $ replicate m
-    $ bitStringBuilderHoley
-    $ bitString 64 0x01020304050607
+    $ bitBuffer64BuilderHoley
+    $ bitBuffer64 64 0x01020304050607

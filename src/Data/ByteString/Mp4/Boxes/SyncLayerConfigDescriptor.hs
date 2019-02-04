@@ -4,7 +4,7 @@ module Data.ByteString.Mp4.Boxes.SyncLayerConfigDescriptor where
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 
-data Mp4SyncLayerDescriptor :: To (Descriptor 'SLConfigDescr)
+data Mp4SyncLayerDescriptor :: Extends (Descriptor 'SLConfigDescr)
 
 -- | In the holy scripture, ISO-14496-14 section 3.1.2, it is written that there
 -- shall be restrictions on the elementary stream descriptor, in there it says:

@@ -24,26 +24,26 @@ trackRunIso5 !mdatOffset !samples = Box c
                                   + fromIntegral
                                   ((headerStaticSize `div` 8)
                                    + sampleCount * (sampleStaticSize `div` 8))
-            !h                = bitBuilderBox (Proxy @(Header TrackRunFlagsIso5))
+            !h                = bitBuilderWithSize (Proxy @(Header TrackRunFlagsIso5))
             !headerStaticSize = (natVal (Proxy @(SizeInBits (Header TrackRunFlagsIso5))))
             !sampleStaticSize = (natVal (Proxy @(SizeInBits (Sample TrackRunFlagsIso5))))
             !sampleCount      = fromIntegral (length samples)
 
         !body = mconcat $ s <$> samples
           where
-            s (!duration, !bs) = bitBuilderBox (Proxy @(Sample TrackRunFlagsIso5)) duration size
+            s (!duration, !bs) = bitBuilderWithSize (Proxy @(Sample TrackRunFlagsIso5)) duration size
               where
                 !size = fromIntegral (BS.length bs)
 
 newtype TrackRun where
-  TrackRun :: BuilderBox -> TrackRun
+  TrackRun :: BuilderWithSize -> TrackRun
   deriving (IsBoxContent)
 
 instance IsBox TrackRun
 type instance BoxTypeSymbol TrackRun = "trun"
 
--- class MkTrackRunArgs (t :: To (TrackRunFlags sop fsp sdp ssp sfp sop)) where
---   data TrRunArgs (t :: To (TrackRunFlags sop fsp sdp ssp sfp sop))
+-- class MkTrackRunArgs (t :: Extends (TrackRunFlags sop fsp sdp ssp sfp sop)) where
+--   data TrRunArgs (t :: Extends (TrackRunFlags sop fsp sdp ssp sfp sop))
 
 data TrackRunFlags
   (dataOffsetPresent :: Bool)
@@ -54,9 +54,9 @@ data TrackRunFlags
   (sampleCompositionTimeOffsetPresent :: Bool)
 
 data TrackRunFlagsIso5
-  :: To (TrackRunFlags 'True 'False 'True 'True 'True 'False)
+  :: Extends (TrackRunFlags 'True 'False 'True 'True 'True 'False)
 
-type Header (t :: To (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
+type Header (t :: Extends (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
       "version"                   @: FieldU8  := 0 -- TODO allow version 1
   .+:                                Field 12 := 0
   .+: "sample-scto-present"       @: Flag     := sctop
@@ -74,7 +74,7 @@ type Header (t :: To (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
         ('RecordField ("first-sample-flags" @:: FieldU32))
 
 
-type Sample (t :: To (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
+type Sample (t :: Extends (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
       WhenR sdp ('RecordField ("sample-duration" @:: FieldU32))
   :+: WhenR ssp ('RecordField ("sample-size"     @:: FieldU32))
   :+: WhenR sfp ('RecordField ("sample-flags"    @:: FieldU32 :=. 0x02000000))

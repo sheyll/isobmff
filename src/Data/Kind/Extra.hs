@@ -8,7 +8,7 @@
 --
 -- A group of types that all 'From' into the same type. This
 -- is an /open/ and /extensible/ alternative to defining an algebraic data type
--- and using the promoted constructors. 'A' goes hand-in-hand with 'To' for
+-- and using the promoted constructors. 'A' goes hand-in-hand with 'Extends' for
 -- better readability.
 --
 -- For example:
@@ -20,12 +20,12 @@
 --
 -- data Color = Black | White
 --
--- data ColoredText :: Color -> Symbol -> 'To' (PrettyPrinter Symbol)
+-- data ColoredText :: Color -> Symbol -> 'Extends' (PrettyPrinter Symbol)
 --
 -- type instance 'From' (ColoredText c txt) = 'WithColor c ('RenderText txt)
 -- @
 module Data.Kind.Extra
-  ( type To
+  ( type Extends
   , type Konst
   , (:~:)
   , type From
@@ -53,67 +53,62 @@ import Data.Type.Equality ((:~:))
 import GHC.TypeLits (Symbol)
 
 -- | Indicates that a type constructs another.
-type To foo = (foo -> Type :: Type)
+type Extends a = (a -> Type :: Type)
 
 -- | An open type family to turn /symbolic/ type representations created with
--- 'A' or 'To' into the actual types.
-type family From (t :: foo -> Type) :: foo
+-- 'A' or 'Extends' into the actual types.
+type family From (t :: a -> Type) :: a
 
--- | A @Konst foo@, @'To' foo@.
-data Konst (a :: k) (b :: k)
-type instance From (Konst f) = f
+-- | A @Konst a@, @'Extends' a@.
+type Konst (a :: k) = ((:~:) a :: Extends k)
 type instance From ((:~:) a) = a
 
 -- | Phantom type for things that have a name
 data Named s
 
 -- | Assign a name to something that has no name
-data Name :: Symbol -> To s -> To (Named s)
+data Name :: Symbol -> Extends s -> Extends (Named s)
 
 -- | Remove tha name of a 'NamedStructure' to get to a 'Structure'
-data Anonymous (x :: To (Named s)) :: To s
+data Anonymous (x :: Extends (Named s)) :: Extends s
 
--- | Assign a symbol to a type.
--- @deprecated
-data Labelled (s :: Symbol) :: To a -> To a
+-- | Assign a symbol to any type in a group.
+data Labelled (s :: Symbol) :: Extends a -> Extends a
 
 type instance From (Labelled s t) = From t
 
--- | An open family of functions from @foo@ to @bar@
-type family Apply (f :: To (foo -> bar)) (x :: foo) :: bar
-
--- | An open family of functions from @foo@ to @bar@
--- TODO type family App (f :: To (a -> b)) (x :: To a) :: To b
+-- | An open family of functions from @a@ to @b@
+type family Apply (f :: Extends (a -> b)) (x :: a) :: b
 
 -- | An alias for 'Apply'
 type f $ x = Apply f x
 
 -- | Compose functions
-data (:>>>:) :: To (good -> better) -> To (better -> best) -> To (good -> best)
+data (:>>>:) :: Extends (good -> better) -> Extends (better -> best) -> Extends (good -> best)
 infixl 1 :>>>:
 type instance Apply (f :>>>: g) x = g $ (f $ x)
 
 -- | From Input & Compose
-data (:^>>>:) :: To (good -> better) -> To (better -> best) -> To (To good -> best)
+data (:^>>>:) :: Extends (good -> better) -> Extends (better -> best) -> Extends (Extends good -> best)
 infixl 1 :^>>>:
 type instance Apply (f :^>>>: g) x = g $ (f $ From x)
 
 -- | Compose and 'Konst'
-data (:>>>^:) :: To (good -> better) -> To (better -> best) -> To (good -> To best)
+data (:>>>^:) :: Extends (good -> better) -> Extends (better -> best) -> Extends (good -> Extends best)
 infixl 1 :>>>^:
 type instance Apply (f :>>>^: g) x = Konst (g $ (f $ x))
 
 -- | A function that applies 'From'
-data Extract :: To (To x -> x)
+data Extract :: Extends (Extends x -> x)
 type instance Apply Extract x = From x
 
 -- | From and ApplyCompose functions
-data (:>>=:) :: To foo -> To (foo -> To bar) -> To bar
+data (:>>=:) :: Extends a -> Extends (a -> Extends b) -> Extends b
 infixl 1 :>>=:
 type instance From (x :>>=: f) = From (f $ From x)
 
 -- | Either use the value from @Just@ or return a fallback value(types(kinds))
-data Optional :: To t -> To (s -> To t) -> To (Maybe s -> To t)
+data Optional :: Extends t -> Extends (s -> Extends t) -> Extends (Maybe s -> Extends t)
 
 type instance Apply (Optional fallback f) ('Just s) = f $ s
 type instance Apply (Optional fallback f) 'Nothing = fallback
@@ -121,10 +116,10 @@ type instance Apply (Optional fallback f) 'Nothing = fallback
 -- | Map over the elements of a list and fold the result.
 type family
   FoldMap
-          (append :: To (bar -> To (bar -> bar)))
-          (zero :: bar)
-          (f :: To (foo -> bar))
-          (xs :: [(foo :: Type)]) :: (bar :: Type) where
+          (append :: Extends (b -> Extends (b -> b)))
+          (zero :: b)
+          (f :: Extends (a -> b))
+          (xs :: [(a :: Type)]) :: (b :: Type) where
   FoldMap append zero f '[]       = zero
   FoldMap append zero f (x ': xs) = append $ (f $ x) $ FoldMap append zero f xs
 
@@ -135,18 +130,18 @@ type family
 --  missing.
 
 -- | Like @TyCon1@ from Data.Singletons
-data Fun1 :: (a -> To b)
-            -> To (a -> To b)
+data Fun1 :: (a -> Extends b)
+            -> Extends (a -> Extends b)
 type instance Apply (Fun1 f) x = (f x)
 
-data Fun2 :: (a -> b -> To c)
-            -> To (a -> To (b -> To c))
+data Fun2 :: (a -> b -> Extends c)
+            -> Extends (a -> Extends (b -> Extends c))
 type instance Apply (Fun2 f) x = Fun1 (f x)
 
-data Fun3 :: (a -> b -> c -> To d)
-            -> To (a -> To (b -> To (c -> To d)))
+data Fun3 :: (a -> b -> c -> Extends d)
+            -> Extends (a -> Extends (b -> Extends (c -> Extends d)))
 type instance Apply (Fun3 f) x = Fun2 (f x)
 
-data Fun4 :: (a -> b -> c -> d -> To e)
-            -> To (a -> To (b -> To (c -> To (d -> To e))))
+data Fun4 :: (a -> b -> c -> d -> Extends e)
+            -> Extends (a -> Extends (b -> Extends (c -> Extends (d -> Extends e))))
 type instance Apply (Fun4 f) x = Fun3 (f x)

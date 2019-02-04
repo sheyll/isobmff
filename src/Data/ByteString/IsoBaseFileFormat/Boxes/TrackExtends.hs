@@ -31,11 +31,11 @@ trackExtends
   -> Word16 -- ^ sample degradation priority
   -> Box (FullBox TrackExtends 0)
 trackExtends =
-   wrapBitBuilderBox (fullBox 0 . MkTrackExtends) (Proxy @TrackExtendsBody)
+   wrapBitBuilderWithSize (fullBox 0 . MkTrackExtends) (Proxy @TrackExtendsBody)
 
 
 newtype TrackExtends where
-  MkTrackExtends :: BuilderBox -> TrackExtends
+  MkTrackExtends :: BuilderWithSize -> TrackExtends
   deriving (IsBoxContent)
 
 instance IsBox TrackExtends

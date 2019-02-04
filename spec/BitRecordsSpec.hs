@@ -36,33 +36,33 @@ basicsSpec = do
           -- -*  1 `ShouldBe` SizeInBits (ToBitRecord 'False)
         checkFlagJust = Valid
     runIO $ print checkFlagJust
-  describe "bitStringBuilder" $ do
+  describe "bitBuffer64Printer" $ do
     describe "Just x" $ it "writes x" $
-      bitStringPrinter (Proxy :: Proxy (OptionalRecord ('Just ('BitRecordMember (Flag := 'True))))) `shouldBe` "<< 80 >>"
+      bitBuffer64Printer (Proxy :: Proxy (OptionalRecord ('Just ('BitRecordMember (Flag := 'True))))) `shouldBe` "<< 80 >>"
     describe "Nothing" $ it "writes nothing" $
-      bitStringPrinter (Proxy :: Proxy (OptionalRecord ('Nothing))) `shouldBe` "<<  >>"
+      bitBuffer64Printer (Proxy :: Proxy (OptionalRecord ('Nothing))) `shouldBe` "<<  >>"
     -- describe "'[]" $ it "writes nothing" $
-    --   bitStringPrinter (Proxy :: Proxy (BitRecordOfList (Fun1 RecordField)  ('[]))) `shouldBe` "<<  >>"
+    --   bitBuffer64Printer (Proxy :: Proxy (BitRecordOfList (Fun1 RecordField)  ('[]))) `shouldBe` "<<  >>"
     -- describe "'[x1, x2]" $ it "writes x1 then x2" $
-    --   bitStringPrinter (Proxy :: Proxy (BitRecordOfList (Fun1 RecordField) ('[FieldU8 := 1, FieldU8 := 2]))) `shouldBe` "<< 01 02 >>"
+    --   bitBuffer64Printer (Proxy :: Proxy (BitRecordOfList (Fun1 RecordField) ('[FieldU8 := 1, FieldU8 := 2]))) `shouldBe` "<< 01 02 >>"
     describe "'True" $ it "writes a single bit with a 1" $
-      bitStringPrinter (Proxy :: Proxy (RecordField (Flag := 'True))) `shouldBe` "<< 80 >>"
+      bitBuffer64Printer (Proxy :: Proxy (RecordField (Flag := 'True))) `shouldBe` "<< 80 >>"
     describe "'False" $ it "writes a single bit with a 0" $
-      bitStringPrinter (Proxy :: Proxy (RecordField (Flag := 'False))) `shouldBe` "<< 00 >>"
+      bitBuffer64Printer (Proxy :: Proxy (RecordField (Flag := 'False))) `shouldBe` "<< 00 >>"
     describe "@: labelled fields"  $ do
       it "writes them ..." $
         let fld = Proxy @(From (RecordField ( "foo" @: FlagJust 'Nothing  )))
-        in bitStringPrinter fld `shouldBe` "<< 00 >>"
+        in bitBuffer64Printer fld `shouldBe` "<< 00 >>"
     describe "FlagJust" $ do
       it "writes a single bit '1' for a 'Just ...' parameter" $
-        bitStringPrinter (Proxy :: Proxy (RecordField (FlagJust ('Just "test")))) `shouldBe` "<< 80 >>"
+        bitBuffer64Printer (Proxy :: Proxy (RecordField (FlagJust ('Just "test")))) `shouldBe` "<< 80 >>"
       it "writes a single bit '0' for a 'Nothing' parameter" $
-        bitStringPrinter (Proxy :: Proxy (RecordField (FlagJust 'Nothing))) `shouldBe` "<< 00 >>"
+        bitBuffer64Printer (Proxy :: Proxy (RecordField (FlagJust 'Nothing))) `shouldBe` "<< 00 >>"
     describe "FlagNothing" $ do
       it "writes a single bit '0' for a 'Just ...' parameter" $
-        bitStringPrinter (Proxy :: Proxy (RecordField (FlagNothing ('Just "test")))) `shouldBe` "<< 00 >>"
+        bitBuffer64Printer (Proxy :: Proxy (RecordField (FlagNothing ('Just "test")))) `shouldBe` "<< 00 >>"
       it "writes a single bit '1' for a 'Nothing' parameter" $
-        bitStringPrinter (Proxy :: Proxy (RecordField (FlagNothing 'Nothing))) `shouldBe` "<< 80 >>"
+        bitBuffer64Printer (Proxy :: Proxy (RecordField (FlagNothing 'Nothing))) `shouldBe` "<< 80 >>"
   -- TODO reenable showRecord tests
   -- describe "showRecord" $ do
   --   describe "Maybe" $ do
@@ -116,9 +116,9 @@ arraySpec =
         let expected = "utf-8(40) := <<hello>> [5 Bytes]\nutf-8(40) := <<hello>> [5 Bytes]\nutf-8(40) := <<hello>> [5 Bytes]\nutf-8(40) := <<hello>> [5 Bytes]\nutf-8(40) := <<hello>> [5 Bytes]"
             actual = showARecord (Proxy @ (('BitRecordMember [utf8|hello|] ^^ 5)))
             in actual `shouldBe` expected
-      describe "bitStringBuilder" $
+      describe "bitBuffer64Printer" $
         it "writes its contents n times to the builder" $
-          let actual = bitStringPrinter (Proxy :: Proxy (('BitRecordMember (Field 24 := 0x010203) ^^ 4)))
+          let actual = bitBuffer64Printer (Proxy :: Proxy (('BitRecordMember (Field 24 := 0x010203) ^^ 4)))
               expected = "<< 01 02 03 01 02 03 01 02 03 01 02 03 >>"
               in actual `shouldBe` expected
 
@@ -161,30 +161,30 @@ sizedSpec =
       describe "Sized SizeField16 SizedString" $
         it "renders the number bytes not chars as the size field value" $
         showARecord (Proxy :: Proxy (SizedField16 [utf8|Heλλo World!|])) `shouldBe` "size: U16 := hex: 000e (dec: 14)\nutf-8(112) := <<He\955\955o World!>> [14 Bytes]"
-    describe "bitStringBuilder" $ do
+    describe "bitBuffer64Printer" $ do
       describe "no length prefix" $
         it "renders no size prefix and the string as UTF-8 bytes" $
-        bitStringPrinter (Proxy :: Proxy (RecordField [utf8|ABC|]))
+        bitBuffer64Printer (Proxy :: Proxy (RecordField [utf8|ABC|]))
         `shouldBe`
         "<< 41 42 43 >>"
       describe "8-bit length prefix" $
         it "renders a single byte size prefix and the string as UTF-8 bytes" $
-        bitStringPrinter (Proxy :: Proxy (SizedField8 [utf8|ABC|]))
+        bitBuffer64Printer (Proxy :: Proxy (SizedField8 [utf8|ABC|]))
         `shouldBe`
         "<< 03 41 42 43 >>"
       describe "16-bit length prefix" $
         it "renders a big endian 16 bit size prefix and the string as UTF-8 bytes" $
-        bitStringPrinter (Proxy :: Proxy (SizedField16 [utf8|ABC|]))
+        bitBuffer64Printer (Proxy :: Proxy (SizedField16 [utf8|ABC|]))
         `shouldBe`
         "<< 00 03 41 42 43 >>"
       describe "32-bit length prefix" $
         it "renders a big endian 32 bit size prefix and the string as UTF-8 bytes" $
-        bitStringPrinter (Proxy :: Proxy (SizedField32 [utf82|ABC|]))
+        bitBuffer64Printer (Proxy :: Proxy (SizedField32 [utf82|ABC|]))
         `shouldBe`
         "<< 00 00 00 03 41 42 43 >>"
       describe "64-bit length prefix" $
         it "renders a big endian 64 bit size prefix and the string as UTF-8 bytes" $
-        bitStringPrinter (Proxy :: Proxy (SizedField64 [utf8|ABC|]))
+        bitBuffer64Printer (Proxy :: Proxy (SizedField64 [utf8|ABC|]))
         `shouldBe`
         "<< 00 00 00 00 00 00 00 03 41 42 43 >>"
 
@@ -427,8 +427,8 @@ spec = do
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
             actualB =
-                  runBitStringBuilderHoley
-                  (bitStringBuilderHoley rec)
+                  runBitBuilderHoley
+                  (bitBuffer64BuilderHoley rec)
                           1
                           3
                           7
@@ -441,7 +441,7 @@ spec = do
           let rec = Proxy
               rec :: Proxy (Field 4 := 0 .+. "here" @: Field 4)
               actualB :: Builder
-              actualB = runBitStringBuilderHoley (bitStringBuilderHoley rec) value
+              actualB = runBitBuilderHoley (bitBuffer64BuilderHoley rec) value
               actual = printBuilder actualB
               expected = printf "<< %.2x >>" (value .&. 0xf)
               in actual `shouldBe` expected
@@ -449,17 +449,17 @@ spec = do
         let rec = Proxy
             rec :: Proxy (Flag := 'False .+. Field 7 := 130)
             actual = printBuilder b
-              where b = runBitStringBuilderHoley (bitStringBuilderHoley rec)
+              where b = runBitBuilderHoley (bitBuffer64BuilderHoley rec)
         in actual `shouldBe` "<< 02 >>"
   describe "ByteStringBuilder" $
-    describe "runBitStringBuilderHoley" $
+    describe "runBitBuilderHoley" $
       it "0x01020304050607 to << 00 01 02 03 04 05 06 07 >>" $
         let expected = "<< 00 01 02 03 04 05 06 07 >>"
             actual =
                printBuilder
-                (runBitStringBuilderHoley
-                 (bitStringBuilderHoley
-                     (bitString 64 0x01020304050607)))
+                (runBitBuilderHoley
+                 (bitBuffer64BuilderHoley
+                     (bitBuffer64 64 0x01020304050607)))
             in actual `shouldBe` expected
 #endif
 

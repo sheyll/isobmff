@@ -16,13 +16,13 @@ spec = do
   describe "StaticExpandable" $ do
     describe "ExpandableSizeLastChunk" $
       it "renders both 2 and 130 as 00000010 " $ do
-        let actual130 = bitStringPrinter (Proxy :: Proxy ((ExpandableSizeLastChunk 130)))
-            actual2 = bitStringPrinter (Proxy :: Proxy (ExpandableSizeLastChunk 2))
+        let actual130 = bitBuffer64Printer (Proxy :: Proxy ((ExpandableSizeLastChunk 130)))
+            actual2 = bitBuffer64Printer (Proxy :: Proxy (ExpandableSizeLastChunk 2))
         actual130 `shouldBe` actual2
         actual2 `shouldBe` "<< 02 >>"
     describe "ExpandableSize" $
       it "creates a stdandard conform size representation for the size 130" $
-        let actualStr = bitStringPrinter (Proxy :: Proxy (ExpandableSize 130))
+        let actualStr = bitBuffer64Printer (Proxy :: Proxy (ExpandableSize 130))
         in actualStr `shouldBe` "<< 81 02 >>"
 
     -- TODO add new test

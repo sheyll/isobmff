@@ -83,11 +83,11 @@ instance
     (str :: Symbol)
     (bytes :: Nat)
     (r :: Type)
-    (f :: To (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString size))) .
+    (f :: Extends (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString size))) .
       (KnownSymbol str)
-    => BitStringBuilderHoley (Proxy (f := 'MkASizedString str bytes)) r
+    => HasBitBuilder (Proxy (f := 'MkASizedString str bytes)) r
   where
-    bitStringBuilderHoley _ =
+    bitBuffer64BuilderHoley _ =
       immediate (appendStrictByteString
                  (E.encodeUtf8 (T.pack (symbolVal (Proxy @str)))))
 
@@ -96,10 +96,10 @@ instance
     (str :: Symbol)
     (bytes :: Nat)
     (r :: Type)
-    (f :: To (BitField ASizedString ASizedString size)) .
+    (f :: Extends (BitField ASizedString ASizedString size)) .
       (KnownSymbol str)
-    => BitStringBuilderHoley (Proxy (f :=. 'MkASizedString str bytes)) r
+    => HasBitBuilder (Proxy (f :=. 'MkASizedString str bytes)) r
   where
-    bitStringBuilderHoley _ =
+    bitBuffer64BuilderHoley _ =
       immediate (appendStrictByteString
                  (E.encodeUtf8 (T.pack (symbolVal (Proxy @str)))))

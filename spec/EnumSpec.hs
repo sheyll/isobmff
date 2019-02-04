@@ -12,9 +12,9 @@ spec = do
     it "renders as a record using showRecord" $
       showRecord (Proxy @(BitRecordOfEnum (EnumParam "test" TestEnumExt)))
       `shouldBe` "test: <<enum>>(2)"
-  describe "BitStringBuilder" $ do
+  describe "BitBuilder" $ do
     it "produces binary output" $
-     bitStringPrinter (Proxy  @(BitRecordOfEnum (EnumParam "test" TestEnumExt)))
+     bitBuffer64Printer (Proxy  @(BitRecordOfEnum (EnumParam "test" TestEnumExt)))
       (MkEnumValue (Proxy @'A))
      `shouldBe` "<< 40 >>"
 
