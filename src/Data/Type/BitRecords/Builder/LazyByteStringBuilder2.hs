@@ -83,7 +83,7 @@ builderBoxConstructor !p =
               $ appBitBuilder h initialBitBuilderState
             !out = MkBuilderWithSize wsize builder
         in out
-  in mapAccumulator fromBitBuilder (addParameter p)
+  in mapAccumulator fromBitBuilder (toFunctionBuilder p)
 
 -- * Low-level interface to building 'Extends Structure's and other things
 runBitBuilder
@@ -183,4 +183,4 @@ printBuilder b =
 
 bitBuffer64Printer :: HasFunctionBuilder BitBuilder a => a -> ToFunction BitBuilder a String
 bitBuffer64Printer =
-  toFunction . mapAccumulator (printBuilder . runBitBuilder) . addParameter
+  toFunction . mapAccumulator (printBuilder . runBitBuilder) . toFunctionBuilder
