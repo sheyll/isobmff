@@ -1,18 +1,14 @@
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-redundant-constraints  #-}
 module Data.Type.BitRecords.Builder.LazyByteStringBuilder2 where
 
 import Data.Type.BitRecords.Builder.BitBuffer64
 import Data.FunctionBuilder
 import Data.Type.BitRecords.Structure
-import Data.Type.BitRecords.TypeLits
 import Data.Word
-import Data.Int
 import Data.Bits
 import Data.Kind.Extra
 import Data.Proxy
-import GHC.TypeLits
 import Data.Monoid
 import Control.Category
 import Prelude hiding ((.), id)
@@ -23,13 +19,17 @@ import Text.Printf
 
 -- * 'BitBuffer64' construction from 'Extends Structure's
 
-class HasBitBuilder a r where
-  type ToBitBuilder a r
-  type ToBitBuilder a r = r
-  bitBuffer64BuilderHoley :: a -> FunctionBuilder BitBuilder r (ToBitBuilder a r)
+class HasFunctionBuilder w a where
+  type ToFunction w a r
+  type ToFunction w a r = r
+  toFunctionBuilder :: a -> FunctionBuilder w r (ToFunction w a r)
 
-instance HasBitBuilder BitBuffer64 r where
-  bitBuffer64BuilderHoley = immediate . appendBitBuffer64
+class (HasFunctionBuilder w a)
+   =>  HasFunctionBuilder1 w a b | w a -> b where
+  toParametricFunctionBuilder :: a -> FunctionBuilder w r (b -> r)
+
+instance HasFunctionBuilder BitBuilder BitBuffer64 where
+  toFunctionBuilder = immediate . appendBitBuffer64
 
 newtype BitBuilder =
   BitBuilder {unBitBuilder :: Dual (Endo BitBuilderState)}
@@ -53,9 +53,9 @@ instance Monoid BuilderWithSize where
 -- | Create a 'SB.Builder' from a 'Structure' and store it in a 'BuilderWithSize'
 bitBuilderWithSize ::
   forall (struct :: Extends Structure) .
-  HasBitBuilder (Proxy struct) BuilderWithSize
+  HasFunctionBuilder BitBuilder (Proxy struct)
   => Proxy struct
-  -> ToBitBuilder (Proxy struct) BuilderWithSize
+  -> ToFunction BitBuilder (Proxy struct) BuilderWithSize
 bitBuilderWithSize = toFunction . builderBoxConstructor
 
 -- | Like 'bitBuilderWithSize', but 'toFunction' the result and accept as an additional
@@ -63,19 +63,19 @@ bitBuilderWithSize = toFunction . builderBoxConstructor
 -- 'toFunction' the whole machiner.
 wrapBitBuilderWithSize ::
   forall (struct :: Extends Structure) wrapped .
-    HasBitBuilder (Proxy struct) wrapped
+    HasFunctionBuilder BitBuilder (Proxy struct)
   => (BuilderWithSize -> wrapped)
   -> Proxy struct
-  -> ToBitBuilder (Proxy struct) wrapped
+  -> ToFunction BitBuilder (Proxy struct) wrapped
 wrapBitBuilderWithSize !f !p = toFunction (mapAccumulator f (builderBoxConstructor p))
 
 -- | Create a 'SB.Builder' from a 'Extends Structure' and store it in a 'BuilderWithSize';
 -- return a 'FunctionBuilder' monoid that does that on 'toFunction'
 builderBoxConstructor ::
   forall (struct :: Extends Structure) r .
-  HasBitBuilder (Proxy struct) r
+  HasFunctionBuilder BitBuilder (Proxy struct)
   =>  Proxy struct
-  -> FunctionBuilder BuilderWithSize r (ToBitBuilder (Proxy struct) r)
+  -> FunctionBuilder BuilderWithSize r (ToFunction BitBuilder (Proxy struct) r)
 builderBoxConstructor !p =
   let fromBitBuilder !h =
         let (BitBuilderState !builder _ !wsize) =
@@ -83,7 +83,7 @@ builderBoxConstructor !p =
               $ appBitBuilder h initialBitBuilderState
             !out = MkBuilderWithSize wsize builder
         in out
-  in mapAccumulator fromBitBuilder (bitBuffer64BuilderHoley p)
+  in mapAccumulator fromBitBuilder (addParameter p)
 
 -- * Low-level interface to building 'Extends Structure's and other things
 runBitBuilder
@@ -181,8 +181,6 @@ printBuilder b =
   ("<< " ++) $
   (++ " >>") $ unwords $ printf "%0.2x" <$> B.unpack (SB.toLazyByteString b)
 
-bitBuffer64Printer
-  :: HasBitBuilder a String
-  => a -> ToBitBuilder a String
+bitBuffer64Printer :: HasFunctionBuilder BitBuilder a => a -> ToFunction BitBuilder a String
 bitBuffer64Printer =
-  toFunction . mapAccumulator (printBuilder . runBitBuilder) . bitBuffer64BuilderHoley
+  toFunction . mapAccumulator (printBuilder . runBitBuilder) . addParameter

@@ -17,18 +17,18 @@ instance IsBox Esd
 type instance BoxTypeSymbol Esd = "esds"
 
 esdBox :: forall (record :: Extends (Descriptor 'ES_Descr)) (rendered :: BitRecord) .
-         ( HasBitBuilder (Proxy rendered) EsdBox
+         ( HasFunctionBuilder BitBuilder (Proxy rendered)
          , rendered ~ (RenderEsDescr record))
-       => Proxy record -> ToBitBuilder (Proxy rendered) EsdBox
+       => Proxy record -> ToFunction BitBuilder (Proxy rendered) EsdBox
 esdBox =
   toFunction
   . esdBoxHoley
 
 esdBoxHoley :: forall (record :: Extends (Descriptor 'ES_Descr)) r (rendered :: BitRecord) .
-               ( HasBitBuilder (Proxy rendered) r
+               ( HasFunctionBuilder BitBuilder (Proxy rendered)
                , rendered ~ (RenderEsDescr record)
                )
-             => Proxy record -> FunctionBuilder EsdBox r (ToBitBuilder (Proxy rendered) r)
+             => Proxy record -> FunctionBuilder EsdBox r (ToFunction BitBuilder (Proxy rendered) r)
 esdBoxHoley _p =
   mapAccumulator (fullBox 0 . Esd) $
   builderBoxConstructor (Proxy @rendered)

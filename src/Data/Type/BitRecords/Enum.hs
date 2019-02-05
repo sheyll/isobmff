@@ -125,8 +125,8 @@ fromEnumValue (MkEnumValue p) = enumValue p
 instance
   forall (size :: Nat) r e (v :: e) (f :: Extends (BitRecordField ('MkFieldCustom :: BitField (EnumValue e) e size))) .
     (KnownNat (FromEnum e v), KnownChunkSize size) =>
-  HasBitBuilder (Proxy (f := v)) r where
-  bitBuffer64BuilderHoley _ = immediate
+  HasFunctionBuilder BitBuilder (Proxy (f := v))  where
+  toFunctionBuilder _ = immediate
     (appendBitBuffer64
       (bitBuffer64ProxyLength (Proxy @size)
                               (fromIntegral (natVal (Proxy @(FromEnum e v))))
@@ -134,13 +134,13 @@ instance
     )
 
 instance
-  forall (size :: Nat) r e  .
+  forall (size :: Nat)  e  .
   (KnownChunkSize size) =>
-  HasBitBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r
+  HasFunctionBuilder BitBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size)))
   where
-  type ToBitBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r =
+  type ToFunction BitBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r =
     EnumValue e -> r
-  bitBuffer64BuilderHoley _ = addParameter
+  toFunctionBuilder _ = addParameter
     (appendBitBuffer64 . bitBuffer64ProxyLength (Proxy @size) . fromEnumValue)
 
 type instance ToPretty (EnumValue e) = PutStr "<<enum>>"

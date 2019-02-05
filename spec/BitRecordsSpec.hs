@@ -428,7 +428,7 @@ spec = do
             actualB :: Builder
             actualB =
                   runBitBuilderHoley
-                  (bitBuffer64BuilderHoley rec)
+                  (toFunctionBuilder rec)
                           1
                           3
                           7
@@ -441,7 +441,7 @@ spec = do
           let rec = Proxy
               rec :: Proxy (Field 4 := 0 .+. "here" @: Field 4)
               actualB :: Builder
-              actualB = runBitBuilderHoley (bitBuffer64BuilderHoley rec) value
+              actualB = runBitBuilderHoley (toFunctionBuilder rec) value
               actual = printBuilder actualB
               expected = printf "<< %.2x >>" (value .&. 0xf)
               in actual `shouldBe` expected
@@ -449,7 +449,7 @@ spec = do
         let rec = Proxy
             rec :: Proxy (Flag := 'False .+. Field 7 := 130)
             actual = printBuilder b
-              where b = runBitBuilderHoley (bitBuffer64BuilderHoley rec)
+              where b = runBitBuilderHoley (toFunctionBuilder rec)
         in actual `shouldBe` "<< 02 >>"
   describe "ByteStringBuilder" $
     describe "runBitBuilderHoley" $
@@ -458,7 +458,7 @@ spec = do
             actual =
                printBuilder
                 (runBitBuilderHoley
-                 (bitBuffer64BuilderHoley
+                 (toFunctionBuilder
                      (bitBuffer64 64 0x01020304050607)))
             in actual `shouldBe` expected
 #endif

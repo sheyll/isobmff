@@ -82,12 +82,11 @@ instance
   forall (size :: Nat)
     (str :: Symbol)
     (bytes :: Nat)
-    (r :: Type)
     (f :: Extends (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString size))) .
       (KnownSymbol str)
-    => HasBitBuilder (Proxy (f := 'MkASizedString str bytes)) r
+    => HasFunctionBuilder BitBuilder (Proxy (f := 'MkASizedString str bytes))
   where
-    bitBuffer64BuilderHoley _ =
+    toFunctionBuilder _ =
       immediate (appendStrictByteString
                  (E.encodeUtf8 (T.pack (symbolVal (Proxy @str)))))
 
@@ -95,11 +94,10 @@ instance
   forall (size :: Nat)
     (str :: Symbol)
     (bytes :: Nat)
-    (r :: Type)
     (f :: Extends (BitField ASizedString ASizedString size)) .
       (KnownSymbol str)
-    => HasBitBuilder (Proxy (f :=. 'MkASizedString str bytes)) r
+    => HasFunctionBuilder BitBuilder (Proxy (f :=. 'MkASizedString str bytes))
   where
-    bitBuffer64BuilderHoley _ =
+    toFunctionBuilder _ =
       immediate (appendStrictByteString
                  (E.encodeUtf8 (T.pack (symbolVal (Proxy @str)))))
