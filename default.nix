@@ -11,5 +11,14 @@ let
     src = pkgs.pkgs.lib.cleanSource ./.;
   };
 
+  # Temporarily add this dependency via github
+  fb = pkgs.haskellPackages.callCabal2nix
+         "function-builder"
+         (pkgs.fetchFromGitHub {
+           owner = "sheyll";
+           repo = "function-builder";
+           rev = "0.3.0.1";
+           sha256 = "0jimziax8ri2sly15mblcm2lys90x4x07ciw7zcys5msmk7l8ad9"; }) {};
+
   in pkgs.haskellPackages.callCabal2nix
-       "isobmff" cleanSrc {}
+       "isobmff" cleanSrc { function-builder = fb; }
