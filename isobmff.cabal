@@ -110,7 +110,9 @@ library
                      , Data.Type.BitRecords.SizedString
                      , Data.Type.BitRecords.Sized
                      , Data.Type.BitRecords.Structure
-                     , Data.Type.BitRecords.TypeLits
+                     , Data.Type.BitRecords.Structure.Constructor
+                     , Data.Type.BitRecords.Structure.String
+                     , Data.Type.BitRecords.Structure.TypeLits
   build-depends:       base >= 4.12 && < 5
                      , bytestring
                      -- , type-list

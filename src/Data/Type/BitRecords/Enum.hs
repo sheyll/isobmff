@@ -123,7 +123,7 @@ fromEnumValue (MkEnumValue p) = enumValue p
   enumValue _ = fromIntegral (natVal (Proxy @(FromEnum enum v)))
 
 instance
-  forall (size :: Nat) r e (v :: e) (f :: Extends (BitRecordField ('MkFieldCustom :: BitField (EnumValue e) e size))) .
+  forall (size :: Nat) e (v :: e) (f :: Extends (BitRecordField ('MkFieldCustom :: BitField (EnumValue e) e size))) .
     (KnownNat (FromEnum e v), KnownChunkSize size) =>
   HasFunctionBuilder BitBuilder (Proxy (f := v))  where
   toFunctionBuilder _ = immediate

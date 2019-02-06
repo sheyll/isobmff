@@ -1,6 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.Type.BitRecords.SizedString
+module Data.Type.BitRecords.Structure.String
   (SizedString()
   ,ASizedString()
   ,utf8

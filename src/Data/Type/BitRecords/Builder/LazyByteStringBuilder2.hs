@@ -65,7 +65,7 @@ wrapBitBuilderWithSize !f !p = toFunction (mapAccumulator f (builderBoxConstruct
 builderBoxConstructor ::
   forall (struct :: Extends Structure) r .
   HasFunctionBuilder BitBuilder (Proxy struct)
-  =>  Proxy struct
+  => Proxy struct
   -> FunctionBuilder BuilderWithSize r (ToFunction BitBuilder (Proxy struct) r)
 builderBoxConstructor !p =
   let fromBitBuilder !h =
@@ -84,7 +84,7 @@ runBitBuilder !w =
   flushBitBuilder $ appBitBuilder w initialBitBuilderState
 
 bitBuffer64Builder :: (BitBuilderState -> BitBuilderState)
-                 -> BitBuilder
+                    -> BitBuilder
 bitBuffer64Builder = BitBuilder . Dual . Endo
 
 appBitBuilder :: BitBuilder

@@ -37,13 +37,10 @@ import           Data.Proxy
 import           Data.Type.Pretty
 import           Data.Word
 import           GHC.TypeLits
-import           Text.Printf
-import Data.Tagged
 import Data.Type.Bool
 import Data.Type.Equality (type (==))
-import Numeric.Natural
 import Test.TypeSpec
-import Data.Type.BitRecords.TypeLits
+import Data.Type.BitRecords.Structure.TypeLits
 
 -- | Phantom type for structured data
 data Structure = MkStructure
@@ -51,24 +48,18 @@ data Structure = MkStructure
 -- | The number of bits that a structure with a predetermined fixed length requires.
 type family BitCount (t :: Extends Structure) :: Nat
 
--- | The class accompanying 'Structure' derivatives
--- | The type signature of a constructor (function) for a structure
-type family Constructor (t :: Extends Structure) next :: k
 
 -- | Support for Pretty Printing 'Structure' Types
 type family PrettyStructure (struct :: Extends Structure) :: PrettyType
-
 type instance ToPretty (struct :: Extends Structure) = PrettyStructure struct
 
 -- | Empty Structure
 data EmptyStructure :: Extends Structure
 
 type instance BitCount EmptyStructure = 0
-type instance Constructor EmptyStructure next = next
 type instance PrettyStructure EmptyStructure = 'PrettyEmpty
 
 type instance BitCount (Anonymous (Name name struct)) = BitCount struct
-type instance Constructor (Anonymous (Name name struct)) next = Constructor struct next
 type instance PrettyStructure (Anonymous (Name name struct)) = name <:> PrettyStructure struct
 
 -- | A record is a list of fields, 'Name' 'Structure' composed of a list of other Record in natural order.
@@ -76,8 +67,6 @@ data Record :: [Extends (Named Structure)] -> Extends Structure
 
 type instance BitCount (Record '[]) = 0
 type instance BitCount (Record (x ': xs)) = BitCount (Anonymous x) + BitCount (Record xs)
-type instance Constructor (Record ('[] :: [Extends (Named Structure)])) next = next
-type instance Constructor (Record (x ': xs)) next = Constructor (Anonymous x) (Constructor (Record xs) next)
 
 type instance PrettyStructure (Record xs) = "Record" <:$$--> PrettyRecord xs
 
@@ -108,8 +97,6 @@ infixr 7 //
 
 type instance BitCount (BitSequence length) =
   WithValidBitSequenceLength length length
-type instance Constructor (BitSequence length) next =
-  WithValidBitSequenceLength length (Word64 -> next)
 type instance PrettyStructure (BitSequence length) =
   WithValidBitSequenceLength length (PutStr "BitSequence " <+> PutNat length)
 
@@ -118,7 +105,6 @@ type instance PrettyStructure (BitSequence length) =
 data ConstantStructure :: Extends TypeLit -> Extends Structure
 
 type instance BitCount (ConstantStructure r) = TypeLitBits r
-type instance Constructor (ConstantStructure r) next = next
 type instance PrettyStructure (ConstantStructure r) = "ConstantStructure" <:> ToPretty r
 
 -- ** Integer Sequences
@@ -128,17 +114,14 @@ data TypeStructure :: Type -> Extends Structure
 
 type U8 = TypeStructure Word8
 type instance BitCount (TypeStructure Word8) = 8
-type instance Constructor (TypeStructure Word8) next = Word8 -> next
 type instance PrettyStructure (TypeStructure Word8) = ToPretty Word8
 
 type S8 = TypeStructure Int8
 type instance BitCount (TypeStructure Int8) = 8
-type instance Constructor (TypeStructure Int8) next = Int8 -> next
 type instance PrettyStructure (TypeStructure Int8) = ToPretty Int8
 
 type FlagStructure = TypeStructure Bool
 type instance BitCount (TypeStructure Bool) = 1
-type instance Constructor (TypeStructure Bool) next = Bool -> next
 type instance PrettyStructure (TypeStructure Bool) = ToPretty Bool
 
 -- | Structure holding integral numbers
@@ -168,8 +151,6 @@ type family WithValidIntegerStructureLength (n :: Nat) (out :: k) where
       (TypeError ('Text "Invalid IntegerStructure size: " ':<>: 'ShowType n))))
 
 type instance BitCount (IntegerStructure n s e) = WithValidIntegerStructureLength n n
-type instance Constructor (IntegerStructure n s e) next   =
-  WithValidIntegerStructureLength n (IntegerStructure n s e 'MkStructure -> next)
 type instance PrettyStructure (IntegerStructure n s e) =
   WithValidIntegerStructureLength n
     (PutStr "IntegerStructure"
@@ -197,8 +178,6 @@ type family WithValidLiteralSize (struct :: Extends Structure) arg (out :: k) ::
                   ':<>: 'Text " bits."))
 
 type instance BitCount (Assign s a) = WithValidLiteralSize s a (BitCount s)
-type instance Constructor (Assign s a) next =
-  WithValidLiteralSize s a next
 type instance PrettyStructure (Assign s a) =
   WithValidLiteralSize s a
     (PutStr "Assign" <+> PrettyStructure s <+> ToPretty a)
@@ -207,8 +186,6 @@ data ConditionalStructure (condition :: Bool) (ifStruct :: Extends Structure) (e
 
 type instance BitCount (ConditionalStructure 'True l r) = BitCount l
 type instance BitCount (ConditionalStructure 'False l r) = BitCount r
-type instance Constructor (ConditionalStructure 'True l r) next = Constructor l next
-type instance Constructor (ConditionalStructure 'False l r) next = Constructor r next
 type instance PrettyStructure (ConditionalStructure 'True l r) = PrettyStructure l
 type instance PrettyStructure (ConditionalStructure 'False l r) = PrettyStructure r
 
@@ -245,34 +222,6 @@ _typeSpecBitCount
             ]
 _typeSpecBitCount TrueProxy = Valid
 _typeSpecBitCount FalseProxy = Valid
-
-_constructorSpec :: ()
-_constructorSpec =
-    (undefined :: Constructor U8 ())          (undefined :: Word8 )
-  <> (undefined :: Constructor S8 ())         (undefined :: Int8 )
-  <> (undefined :: Constructor FlagStructure ()) (undefined :: Bool )
-  <> (undefined :: Constructor (S 16 'BE) ()) (undefined :: IntegerStructure 16 'Signed 'BE  'MkStructure )
-  <> (undefined :: Constructor (U 16 'BE) ()) (undefined :: IntegerStructure 16 'Unsigned 'BE  'MkStructure )
-  <> (undefined :: Constructor (S 16 'LE) ()) (undefined :: IntegerStructure 16 'Signed 'LE  'MkStructure )
-  <> (undefined :: Constructor (U 16 'LE) ()) (undefined :: IntegerStructure 16 'Unsigned 'LE  'MkStructure )
-  <> (undefined :: Constructor (S 32 'BE) ()) (undefined :: IntegerStructure 32 'Signed 'BE  'MkStructure )
-  <> (undefined :: Constructor (U 32 'BE) ()) (undefined :: IntegerStructure 32 'Unsigned 'BE  'MkStructure )
-  <> (undefined :: Constructor (S 32 'LE) ()) (undefined :: IntegerStructure 32 'Signed 'LE  'MkStructure )
-  <> (undefined :: Constructor (U 32 'LE) ()) (undefined :: IntegerStructure 32 'Unsigned 'LE  'MkStructure )
-  <> (undefined :: Constructor (S 64 'BE) ()) (undefined :: IntegerStructure 64 'Signed 'BE  'MkStructure )
-  <> (undefined :: Constructor (U 64 'BE) ()) (undefined :: IntegerStructure 64 'Unsigned 'BE  'MkStructure )
-  <> (undefined :: Constructor (S 64 'LE) ()) (undefined :: IntegerStructure 64 'Signed 'LE  'MkStructure )
-  <> (undefined :: Constructor (U 64 'LE) ()) (undefined :: IntegerStructure 64 'Unsigned 'LE  'MkStructure )
-  <> (undefined :: Constructor (Anonymous (Name "foo" U8)) ()) (undefined :: Word8 )
-  <> (undefined :: Constructor (Assign (Name "foo" U8 <> Name "bar" FlagStructure) (NatLiteral 256)) ())
-  <> (undefined :: Constructor (Record '[]) ())
-  <> (undefined :: Constructor EmptyStructure ())
-  <> (undefined :: Constructor (BitSequence 15) ()) (undefined :: Word64)
-  <> (undefined :: Constructor (ConditionalStructure  'True  (Record '[]) U8) ())
-  <> (undefined :: Constructor (ConditionalStructure  'False  (Record '[]) U8) ()) (undefined :: Word8)
-  <> (undefined :: Constructor (Record '[Name "x" U8, Name "y" S8]) ()) (undefined :: Word8 ) (undefined :: Int8 )
-  <> (undefined :: Constructor (Name "x" U8 <> Name "y" S8 <> Name "z" S8) ()) (undefined :: Word8 ) (undefined :: Int8 ) (undefined :: Int8 )
-  <> (undefined :: Constructor (ConstantStructure (BitsLiteral [1,0,1,0])) ())
 
 _prettySpec :: String
 _prettySpec =

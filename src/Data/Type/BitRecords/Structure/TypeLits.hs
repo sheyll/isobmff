@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Data.Type.BitRecords.TypeLits where
+module Data.Type.BitRecords.Structure.TypeLits where
 
 import           Data.Kind.Extra
 import           Data.Type.Pretty
