@@ -42,46 +42,61 @@ import Data.Type.Equality (type (==))
 import Test.TypeSpec
 import Data.Type.BitRecords.Structure.TypeLits
 
--- | Phantom type for structured data
-data Structure = MkStructure
+-- | Phantom type for structures
+data Structure (sizeType :: StructureSizeType) where
+  MkVariableStructure :: Structure 'VarSize
+  MkFixStructure :: Structure 'FixSize
 
--- | The number of bits that a structure with a predetermined fixed length requires.
-type family BitCount (t :: Extends Structure) :: Nat
+-- | 'Structure's that have statically known fixed size.
+type FixStructure = Structure 'FixSize
 
+-- | 'Structure's that have __no__ statically known fixed size.
+type VariableStructure = Structure 'VarSize
+
+-- | Phantom type indicating that if a 'Structure' has a statically known size.
+data StructureSizeType = VarSize | FixSize
+
+-- | The number of bits that a structure with a predetermined fixed size requires.
+type family GetStructureSize (t :: Extends (Structure 'FixSize)) :: Nat
 
 -- | Support for Pretty Printing 'Structure' Types
-type family PrettyStructure (struct :: Extends Structure) :: PrettyType
-type instance ToPretty (struct :: Extends Structure) = PrettyStructure struct
+type family PrettyStructure (struct :: Extends (Structure sizeType)) :: PrettyType
+type instance ToPretty (struct :: Extends (Structure sizeType)) = PrettyStructure struct
 
 -- | Empty Structure
-data EmptyStructure :: Extends Structure
+data EmptyStructure :: Extends (Structure 'FixSize)
 
-type instance BitCount EmptyStructure = 0
+type instance GetStructureSize EmptyStructure = 0
 type instance PrettyStructure EmptyStructure = 'PrettyEmpty
 
-type instance BitCount (Anonymous (Name name struct)) = BitCount struct
+type instance GetStructureSize (Anonymous (Name name struct)) = GetStructureSize struct
 type instance PrettyStructure (Anonymous (Name name struct)) = name <:> PrettyStructure struct
 
 -- | A record is a list of fields, 'Name' 'Structure' composed of a list of other Record in natural order.
-data Record :: [Extends (Named Structure)] -> Extends Structure
+data Record :: [Extends (Named (Structure sizeType))] -> Extends (Structure sizeType)
 
-type instance BitCount (Record '[]) = 0
-type instance BitCount (Record (x ': xs)) = BitCount (Anonymous x) + BitCount (Record xs)
+type instance GetStructureSize (Record '[]) = 0
+type instance GetStructureSize (Record (x ': xs)) = GetStructureSize (Anonymous x) + GetStructureSize (Record xs)
 
 type instance PrettyStructure (Record xs) = "Record" <:$$--> PrettyRecord xs
 
-type family (<>) (a :: Extends (Named Structure)) (b :: k) :: Extends Structure where
-  a <> (b :: Extends (Named Structure)) = Record '[a, b]
+type family (<>) (a :: Extends (Named (Structure sizeType))) (b :: k) :: Extends (Structure sizeType) where
+  a <> (b :: Extends (Named (Structure sizeType))) = Record '[a, b]
   a <> (Record xs) = Record (a ': xs)
 infixr 6 <>
 
-type family PrettyRecord (xs :: [Extends (Named Structure)]) :: PrettyType where
+type family PrettyRecord (xs :: [Extends (Named (Structure sizeType))]) :: PrettyType where
   PrettyRecord '[] = 'PrettyEmpty
   PrettyRecord (x ': xs) =
     (PutStr "-" <+> PrettyStructure (Anonymous x)) <$$> PrettyRecord xs
 
+
+-- | A variable length structure filled with any storable value
+data AnyStructure (content :: k) :: Extends (Structure 'VarSize)
+type instance PrettyStructure (AnyStructure c) = "AnyStructure" <:$$--> ToPretty c
+
 -- | A fixed length sequence of bits.
-data BitSequence (length :: Nat) :: Extends Structure
+data BitSequence (length :: Nat) :: Extends (Structure 'FixSize)
 
 type family WithValidBitSequenceLength (length :: Nat) (out :: k) :: k where
   WithValidBitSequenceLength length out =
@@ -89,55 +104,55 @@ type family WithValidBitSequenceLength (length :: Nat) (out :: k) :: k where
       out
       (TypeError ('Text "invalid bit sequence length: " ':<>: 'ShowType length))
 
-type family (//) (name :: Symbol) (length :: Nat) :: Extends (Named Structure) where
+type family (//) (name :: Symbol) (length :: Nat) :: Extends (Named (Structure 'FixSize)) where
   name // length =
     WithValidBitSequenceLength length (Name name (BitSequence length))
 
 infixr 7 //
 
-type instance BitCount (BitSequence length) =
+type instance GetStructureSize (BitSequence length) =
   WithValidBitSequenceLength length length
 type instance PrettyStructure (BitSequence length) =
   WithValidBitSequenceLength length (PutStr "BitSequence " <+> PutNat length)
 
 
 -- | A constant, fixed length sequence of bits.
-data ConstantStructure :: Extends TypeLit -> Extends Structure
+data ConstantStructure :: Extends TypeLit -> Extends (Structure 'FixSize)
 
-type instance BitCount (ConstantStructure r) = TypeLitBits r
+type instance GetStructureSize (ConstantStructure r) = TypeLitBits r
 type instance PrettyStructure (ConstantStructure r) = "ConstantStructure" <:> ToPretty r
 
 -- ** Integer Sequences
 
--- | A Wrapper for Haskell types. Users should implement the 'BitCount' and 'Constructor' instances.
-data TypeStructure :: Type -> Extends Structure
+-- | A Wrapper for Haskell types. Users should implement the 'GetStructureSize' and 'Constructor' instances.
+data TypeStructure :: Type -> Extends (Structure 'FixSize)
 
 type U8 = TypeStructure Word8
-type instance BitCount (TypeStructure Word8) = 8
+type instance GetStructureSize (TypeStructure Word8) = 8
 type instance PrettyStructure (TypeStructure Word8) = ToPretty Word8
 
 type S8 = TypeStructure Int8
-type instance BitCount (TypeStructure Int8) = 8
+type instance GetStructureSize (TypeStructure Int8) = 8
 type instance PrettyStructure (TypeStructure Int8) = ToPretty Int8
 
 type FlagStructure = TypeStructure Bool
-type instance BitCount (TypeStructure Bool) = 1
+type instance GetStructureSize (TypeStructure Bool) = 1
 type instance PrettyStructure (TypeStructure Bool) = ToPretty Bool
 
--- | Structure holding integral numbers
-data IntegerStructure :: Nat -> Sign -> Endianess -> Extends Structure where
-  S16LE :: Int16 -> IntegerStructure 16 'Signed 'LE 'MkStructure
-  S16BE :: Int16 -> IntegerStructure 16 'Signed 'BE 'MkStructure
-  U16LE :: Word16 -> IntegerStructure 16 'Unsigned 'LE 'MkStructure
-  U16BE :: Word16 -> IntegerStructure 16 'Unsigned 'BE 'MkStructure
-  S32LE :: Int32 -> IntegerStructure 32 'Signed 'LE 'MkStructure
-  S32BE :: Int32 -> IntegerStructure 32 'Signed 'BE 'MkStructure
-  U32LE :: Word32 -> IntegerStructure 32 'Unsigned 'LE 'MkStructure
-  U32BE :: Word32 -> IntegerStructure 32 'Unsigned 'BE 'MkStructure
-  S64LE :: Int64 -> IntegerStructure 64 'Signed 'LE 'MkStructure
-  S64BE :: Int64 -> IntegerStructure 64 'Signed 'BE 'MkStructure
-  U64LE :: Word64 -> IntegerStructure 64 'Unsigned 'LE 'MkStructure
-  U64BE :: Word64 -> IntegerStructure 64 'Unsigned 'BE 'MkStructure
+-- | (Structure 'FixSize) holding integral numbers
+data IntegerStructure :: Nat -> Sign -> Endianess -> Extends (Structure 'FixSize) where
+  S16LE :: Int16 -> IntegerStructure 16 'Signed 'LE 'MkFixStructure
+  S16BE :: Int16 -> IntegerStructure 16 'Signed 'BE 'MkFixStructure
+  U16LE :: Word16 -> IntegerStructure 16 'Unsigned 'LE 'MkFixStructure
+  U16BE :: Word16 -> IntegerStructure 16 'Unsigned 'BE 'MkFixStructure
+  S32LE :: Int32 -> IntegerStructure 32 'Signed 'LE 'MkFixStructure
+  S32BE :: Int32 -> IntegerStructure 32 'Signed 'BE 'MkFixStructure
+  U32LE :: Word32 -> IntegerStructure 32 'Unsigned 'LE 'MkFixStructure
+  U32BE :: Word32 -> IntegerStructure 32 'Unsigned 'BE 'MkFixStructure
+  S64LE :: Int64 -> IntegerStructure 64 'Signed 'LE 'MkFixStructure
+  S64BE :: Int64 -> IntegerStructure 64 'Signed 'BE 'MkFixStructure
+  U64LE :: Word64 -> IntegerStructure 64 'Unsigned 'LE 'MkFixStructure
+  U64BE :: Word64 -> IntegerStructure 64 'Unsigned 'BE 'MkFixStructure
 
 -- | Endianess of an 'IntegerStructure'
 data Endianess = LE | BE
@@ -145,14 +160,14 @@ data Endianess = LE | BE
 -- | Integer sign of an 'IntegerStructure'
 data Sign = Signed | Unsigned
 
-type family WithValidIntegerStructureLength (n :: Nat) (out :: k) where
-  WithValidIntegerStructureLength n out =
+type family IntegerStructureValidateLength (n :: Nat) (out :: k) where
+  IntegerStructureValidateLength n out =
     If (n == 16) out (If (n == 32) out (If (n == 64) out
       (TypeError ('Text "Invalid IntegerStructure size: " ':<>: 'ShowType n))))
 
-type instance BitCount (IntegerStructure n s e) = WithValidIntegerStructureLength n n
+type instance GetStructureSize (IntegerStructure n s e) = IntegerStructureValidateLength n n
 type instance PrettyStructure (IntegerStructure n s e) =
-  WithValidIntegerStructureLength n
+  IntegerStructureValidateLength n
     (PutStr "IntegerStructure"
     <+> PutNat n
     <+> If (s == 'Signed) (PutStr "Signed") (PutStr "Unsigned")
@@ -161,31 +176,31 @@ type instance PrettyStructure (IntegerStructure n s e) =
 type U n e = IntegerStructure n 'Unsigned e
 type S n e = IntegerStructure n 'Signed e
 
--- | Structure consisting of predefined type level literal values.
+-- | (Structure 'FixSize) consisting of predefined type level literal values.
 
 
--- | Compile time fixed content structure aliased to existing 'Structure'.
-data Assign :: Extends Structure -> Extends TypeLit -> Extends Structure
+-- | Compile time fixed content structure aliased to existing '(Structure 'FixSize)'.
+data Assign :: Extends (Structure 'FixSize) -> Extends TypeLit -> Extends (Structure 'FixSize)
 
-type family WithValidLiteralSize (struct :: Extends Structure) arg (out :: k) :: k where
-  WithValidLiteralSize struct value out =
-    If (TypeLitBits value <=? BitCount struct)
+type family AssignStructureValidateSize (struct :: Extends (Structure 'FixSize)) arg (out :: k) :: k where
+  AssignStructureValidateSize struct value out =
+    If (TypeLitBits value <=? GetStructureSize struct)
       out
       (TypeError ('Text "Assign value too big to fit into structure, the value " ':<>: 'ShowType value
                   ':<>: 'Text " requires " ':<>: 'ShowType (TypeLitBits value)
                   ':<>: 'Text " bits, but the structure "  ':<>: 'ShowType struct
-                  ':<>: 'Text " has only a size of " ':<>: 'ShowType (BitCount struct)
+                  ':<>: 'Text " has only a size of " ':<>: 'ShowType (GetStructureSize struct)
                   ':<>: 'Text " bits."))
 
-type instance BitCount (Assign s a) = WithValidLiteralSize s a (BitCount s)
+type instance GetStructureSize (Assign s a) = AssignStructureValidateSize s a (GetStructureSize s)
 type instance PrettyStructure (Assign s a) =
-  WithValidLiteralSize s a
+  AssignStructureValidateSize s a
     (PutStr "Assign" <+> PrettyStructure s <+> ToPretty a)
 
-data ConditionalStructure (condition :: Bool) (ifStruct :: Extends Structure) (elseStruct :: Extends Structure) :: Extends Structure
+data ConditionalStructure (condition :: Bool) (ifStruct :: Extends (Structure 'FixSize)) (elseStruct :: Extends (Structure 'FixSize)) :: Extends (Structure 'FixSize)
 
-type instance BitCount (ConditionalStructure 'True l r) = BitCount l
-type instance BitCount (ConditionalStructure 'False l r) = BitCount r
+type instance GetStructureSize (ConditionalStructure 'True l r) = GetStructureSize l
+type instance GetStructureSize (ConditionalStructure 'False l r) = GetStructureSize r
 type instance PrettyStructure (ConditionalStructure 'True l r) = PrettyStructure l
 type instance PrettyStructure (ConditionalStructure 'False l r) = PrettyStructure r
 
@@ -194,7 +209,7 @@ type instance PrettyStructure (ConditionalStructure 'False l r) = PrettyStructur
 -- | Render @struct@ to a pretty, human readable form. Internally this is a wrapper
 -- around 'ptShow' using 'PrettyStructure'.
 showStructure
-  :: forall proxy (struct :: Extends Structure)
+  :: forall proxy (struct :: Extends (Structure 'FixSize))
    . PrettyTypeShow (PrettyStructure struct)
   => proxy struct
   -> String
@@ -208,20 +223,20 @@ data BoolProxy (t :: Bool) where
   TrueProxy :: BoolProxy 'True
   FalseProxy :: BoolProxy 'False
 
-_typeSpecBitCount
+_typeSpecGetStructureSize
   :: BoolProxy (testBool :: Bool)
-  -> Expect [ BitCount U8 `ShouldBe` 8
-            , BitCount EmptyStructure `ShouldBe` 0
-            , BitCount (Record [Name "x" U8, Name "y" U8]) `ShouldBe` 16
-            , BitCount (S 16 'BE) `ShouldBe` 16
-            , BitCount (ConditionalStructure testBool (U 32 'LE) S8) `ShouldBe` (If testBool 32 8)
-            , BitCount ("field 1"//3 <> "field 2"//2 <> "field 3"//5 <>
+  -> Expect [ GetStructureSize U8 `ShouldBe` 8
+            , GetStructureSize EmptyStructure `ShouldBe` 0
+            , GetStructureSize (Record [Name "x" U8, Name "y" U8]) `ShouldBe` 16
+            , GetStructureSize (S 16 'BE) `ShouldBe` 16
+            , GetStructureSize (ConditionalStructure testBool (U 32 'LE) S8) `ShouldBe` (If testBool 32 8)
+            , GetStructureSize ("field 1"//3 <> "field 2"//2 <> "field 3"//5 <>
                           Name "field 4" ("field 4.1"//3 <> "field 4.2"//6))
                          `ShouldBe` 19
-            , BitCount (Assign (BitSequence 4) (BitsLiteral '[1,0,0,1])) `ShouldBe` 4
+            , GetStructureSize (Assign (BitSequence 4) (BitsLiteral '[1,0,0,1])) `ShouldBe` 4
             ]
-_typeSpecBitCount TrueProxy = Valid
-_typeSpecBitCount FalseProxy = Valid
+_typeSpecGetStructureSize TrueProxy = Valid
+_typeSpecGetStructureSize FalseProxy = Valid
 
 _prettySpec :: String
 _prettySpec =
@@ -251,6 +266,8 @@ _prettySpec =
        , PrettyStructure (Assign S8 (NegativeNatLiteral 123))
        , PrettyStructure (Assign FlagStructure (FlagLiteral 'True))
        , PrettyStructure (ConstantStructure (BitsLiteral [1,0,1,0]))
-        ]
+       , PrettyStructure (AnyStructure (U 64 'BE))
+       , PrettyStructure ("foo" :# AnyStructure (U 64 'BE) <> "bar" :# AnyStructure Double)
+       ]
       )
     )

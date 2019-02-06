@@ -17,7 +17,7 @@ import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString as SB
 import Text.Printf
 
--- * 'BitBuffer64' construction from 'Extends Structure's
+-- * 'BitBuffer64' construction from 'Extends (Structure sizeType's)
 
 instance HasFunctionBuilder BitBuilder BitBuffer64 where
   toFunctionBuilder = immediate . appendBitBuffer64
@@ -41,9 +41,9 @@ instance Semigroup BuilderWithSize where
 instance Monoid BuilderWithSize where
   mempty = MkBuilderWithSize 0 mempty
 
--- | Create a 'SB.Builder' from a 'Structure' and store it in a 'BuilderWithSize'
+-- | Create a 'SB.Builder' from a ('Structur sizeTypee') and store it in a 'BuilderWithSize'
 bitBuilderWithSize ::
-  forall (struct :: Extends Structure) .
+  forall (struct :: Extends (Structure sizeType)) .
   HasFunctionBuilder BitBuilder (Proxy struct)
   => Proxy struct
   -> ToFunction BitBuilder (Proxy struct) BuilderWithSize
@@ -53,17 +53,17 @@ bitBuilderWithSize = toFunction . builderBoxConstructor
 -- parameter a wrapper function to wrap the final result (the 'BuilderWithSize') and
 -- 'toFunction' the whole machiner.
 wrapBitBuilderWithSize ::
-  forall (struct :: Extends Structure) wrapped .
+  forall (struct :: Extends (Structure sizeType)) wrapped .
     HasFunctionBuilder BitBuilder (Proxy struct)
   => (BuilderWithSize -> wrapped)
   -> Proxy struct
   -> ToFunction BitBuilder (Proxy struct) wrapped
 wrapBitBuilderWithSize !f !p = toFunction (mapAccumulator f (builderBoxConstructor p))
 
--- | Create a 'SB.Builder' from a 'Extends Structure' and store it in a 'BuilderWithSize';
+-- | Create a 'SB.Builder' from a 'Extends (Structure sizeType') and store it in a 'BuilderWithSize';
 -- return a 'FunctionBuilder' monoid that does that on 'toFunction'
 builderBoxConstructor ::
-  forall (struct :: Extends Structure) r .
+  forall (struct :: Extends (Structure sizeType)) r .
   HasFunctionBuilder BitBuilder (Proxy struct)
   => Proxy struct
   -> FunctionBuilder BuilderWithSize r (ToFunction BitBuilder (Proxy struct) r)
@@ -76,7 +76,7 @@ builderBoxConstructor !p =
         in out
   in mapAccumulator fromBitBuilder (toFunctionBuilder p)
 
--- * Low-level interface to building 'Extends Structure's and other things
+-- * Low-level interface to building 'Extends (Structure sizeType's) and other things
 runBitBuilder
   :: BitBuilder -> SB.Builder
 runBitBuilder !w =

@@ -33,6 +33,7 @@ module Data.Kind.Extra
   , Labelled
   , Named
   , Name
+  , type (:#)
   , Anonymous
   , type ($)
   , type (:>>=:)
@@ -68,6 +69,11 @@ data Named s
 
 -- | Assign a name to something that has no name
 data Name :: Symbol -> Extends s -> Extends (Named s)
+
+-- | Alias for 'Name'
+type (name :: Symbol) :# (x :: Extends s) = Name name x
+
+infixr 7 :#
 
 -- | Remove tha name of a 'NamedStructure' to get to a 'Structure'
 data Anonymous (x :: Extends (Named s)) :: Extends s
