@@ -140,7 +140,7 @@ instance
   where
   type ToFunction BitBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r =
     EnumValue e -> r
-  toFunctionBuilder _ = addParameter
+  toFunctionBuilder _ = deferred
     (appendBitBuffer64 . bitBuffer64ProxyLength (Proxy @size) . fromEnumValue)
 
 type instance ToPretty (EnumValue e) = PutStr "<<enum>>"

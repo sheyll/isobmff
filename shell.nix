@@ -1,4 +1,4 @@
-{runTests ? false, tracing ? true, fullbenchmarks ? true, complextests ? false}:
+{runTests ? false, tracing ? true, fullbenchmarks ? false, complextests ? false}:
 with (import ./dependencies.nix).dependencies.nixos;
 let
   isobmffx =
@@ -6,11 +6,11 @@ let
       (haskellPackages.callPackage ./default.nix { })
       (old:
        {
-         buildInputs = old.buildInputs ++ [ 
+         buildInputs = old.buildInputs ++ [
                          haskellPackages.cabal-install
                          (haskellPackages.ghcWithPackages (pl: [haskell.lib.getHaskellBuildInputs isobmffx]))
                        ];
-         shellHook = "eval $(egrep ^export ${ghc}/bin/ghc)";  
+         shellHook = "eval $(egrep ^export ${ghc}/bin/ghc)";
          doCheck = runTests;
          configureFlags = old.configureFlags ++
          [ ("-f" + (if tracing then "-" else "") + "tracing")
@@ -20,4 +20,3 @@ let
        });
 in
 isobmffx.env
-

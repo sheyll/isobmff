@@ -189,5 +189,5 @@ bitBuffer64Word64Holey m =
     $ runBitBuilderHoley
     $ mconcat
     $ replicate m
-    $ addParameter
+    $ deferred
     $ bitBuffer64 64 0x01020304050607

@@ -19,15 +19,6 @@ import Text.Printf
 
 -- * 'BitBuffer64' construction from 'Extends Structure's
 
-class HasFunctionBuilder w a where
-  type ToFunction w a r
-  type ToFunction w a r = r
-  toFunctionBuilder :: a -> FunctionBuilder w r (ToFunction w a r)
-
-class (HasFunctionBuilder w a)
-   =>  HasFunctionBuilder1 w a b | w a -> b where
-  toParametricFunctionBuilder :: a -> FunctionBuilder w r (b -> r)
-
 instance HasFunctionBuilder BitBuilder BitBuffer64 where
   toFunctionBuilder = immediate . appendBitBuffer64
 
