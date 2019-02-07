@@ -8,7 +8,9 @@ import           Data.Kind.Extra
 import           Data.Kind
 import           Data.Word
 import           Data.Type.BitRecords.Structure
-import           Data.Type.BitRecords.Structure.TypeLits
+import           GHC.TypeLits
+import qualified Data.Type.BitRecords.Structure.TypeLits
+                                               as Literal
 
 
 -- | The class accompanying 'Structure' derivatives
@@ -22,7 +24,7 @@ type instance Constructor (Record (x ': xs)) next = Constructor (Anonymous x) (C
 type instance Constructor (BitSequence length) next = WithValidBitSequenceLength length (Word64 -> next)
 type instance Constructor (TypeStructure Bool) next = Bool -> next
 type instance Constructor (TypeStructure Int8) next = Int8 -> next
-type instance Constructor (ConstantStructure r) next = next
+type instance Constructor (LiteralStructure r) next = next
 type instance Constructor (TypeStructure Word8) next = Word8 -> next
 type instance Constructor (IntegerStructure n s e) next   =
   IntegerStructureValidateLength n (IntegerStructure n s e 'MkFixStructure -> next)
@@ -128,7 +130,7 @@ _constructorSpec =
                              ( Assign
                                        ( Name "foo" U8 <> Name "bar" FlagStructure
                                        )
-                                       (NatLiteral 256)
+                                       (LiteralStructure (Literal.To Nat 256))
                              )
                              ()
                    )
@@ -159,7 +161,7 @@ _constructorSpec =
                            (undefined :: Int8)
                            (undefined :: Int8)
                 <> (undefined :: Constructor
-                             (ConstantStructure (BitsLiteral '[1, 0, 1, 0]))
+                             (LiteralStructure (Literal.Bits '[1, 0, 1, 0]))
                              ()
                    )
                 <> (undefined :: Constructor (AnyStructure (U 64 'BE)) ())
@@ -169,5 +171,4 @@ _constructorSpec =
                                      'BE
                                      'MkFixStructure
                            )
-                <> (undefined :: Constructor (AnyStructure Word64) ())
-                           ( 42 )
+                <> (undefined :: Constructor (AnyStructure Word64) ()) (42)
