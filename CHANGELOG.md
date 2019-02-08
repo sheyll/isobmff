@@ -1,3 +1,10 @@
+# 0.14.0.0
+
+Work-In-Progress intermediate release in preperation of splitting this package.
+
+This compiles and the tests run, but the code really sucks!
+
+
 # 0.11.4.0
 
 * Rename `AacMp4StreamConfig` to `AacInitSegment`

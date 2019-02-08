@@ -1,5 +1,5 @@
 name:                isobmff
-version:             0.13.0.0
+version:             0.14.0.0
 synopsis:            A parser and generator for the ISO-14496-12/14 base media file format
 description:         Please see README.md
 homepage:            https://github.com/sheyll/isobmff#readme
