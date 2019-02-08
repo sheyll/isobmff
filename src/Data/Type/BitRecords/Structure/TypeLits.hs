@@ -20,6 +20,7 @@ import           Data.Type.Bool
 import           Data.Type.Equality
 import           Data.Type.Pretty
 import           Data.Kind
+import           Data.Word
 import           GHC.TypeLits
 
 
@@ -64,13 +65,17 @@ class LiteralFamily a typeLitKind | a -> typeLitKind where
   type Pretty a (typeLit :: typeLitKind) = ToPretty typeLit
     -- TODO decide to use or ditch this default: "TypeLiteral" <:$$--> ToPretty a <++> PutStr " " <++> ToPretty typeLit <++> PutStr "::" <++> ToPretty typeLitKind
 
+  -- | Seperator to use when rendering a list of literals of this family.
+  type PrettySeperator a (typeLit :: typeLitKind) :: PrettyType
+  type PrettySeperator a d = 'PrettySpace
+
   -- | Return the number of bits that the literal value will occupy
   type SizeOf a (typeLit :: typeLitKind) :: Nat
 
 -- | Make a valid 'Value' by checking the parameters using 'InRange' and return a 'Value'
 type family To s (x :: k) where
   To s (x :: k) = If (InRange s x) (Value s k x)
-    (TypeError ('Text "Cannot make a value out of: " ':<>: 'ShowType x ':<>: 'Text " for LiteralFamily " ':<>: 'ShowType s))
+    (TypeError ('Text "Cannot make a " ':<>: 'ShowType s ':<>: 'Text " from: " ':<>: 'ShowType x ))
 
 -- | The representation of a /value/ belonging to a 'LiteralFamily'
 data Value s k (x :: k) :: Type
@@ -102,6 +107,7 @@ instance LiteralFamily Bit Nat where
   type InRange Bit n = ( n == 0 || n == 1 )
   type Pretty Bit n = PutNat n
   type SizeOf Bit _ = 1
+  type PrettySeperator Bit _ = 'PrettyEmpty
 
 -- | An unsigned byte literal
 data Byte
@@ -112,6 +118,16 @@ instance LiteralFamily Byte Nat where
   type InRange Byte n = ( n <=? 255 )
   type Pretty Byte n = PutHex n
   type SizeOf Byte _ = 8
+
+instance LiteralFamily Word8 Nat where
+  type InRange Word8 n = ( n <=? 255 )
+  type Pretty Word8 n = PutNat n
+  type SizeOf Word8 _ = 8
+
+instance LiteralFamily Word16 Nat where
+  type InRange Word16 n = ( n <=? 65535 )
+  type Pretty Word16 n = PutNat n
+  type SizeOf Word16 _ = 16
 
 instance LiteralFamily Nat Nat where
   type InRange Nat n = 'True
@@ -177,6 +193,9 @@ instance LiteralFamily s k => LiteralFamily (Sequence s k) [k] where
   type instance Pretty (Sequence s k) (bs :: [k]) =
     ToPretty (Sequence s k) <$$--> ToPrettySequenceLiterals s bs
 
+  type instance PrettySeperator (Sequence s k) (     '[]  :: [k]) = 'PrettySpace
+  type instance PrettySeperator (Sequence s k) ((x ': xs) :: [k]) = 'PrettyNewline
+
   type instance SizeOf (Sequence s k) (     '[]  :: [k]) = 0
   type instance SizeOf (Sequence s k) ((x ': xs) :: [k]) = SizeOf s x + SizeOf (Sequence s k) xs
 
@@ -197,4 +216,4 @@ type family ValidateSequenceLiterals s (all :: [k]) (x :: [k]) :: Bool
 -- | Prettify recursivly all sequence members
 type family ToPrettySequenceLiterals s (x :: [k]) :: PrettyType where
   ToPrettySequenceLiterals s '[] = 'PrettyEmpty
-  ToPrettySequenceLiterals s (x ': xs) = Pretty s x <++> ToPrettySequenceLiterals s xs
+  ToPrettySequenceLiterals s (x ': xs) = Pretty s x <++> PrettySeperator s x <++> ToPrettySequenceLiterals s xs

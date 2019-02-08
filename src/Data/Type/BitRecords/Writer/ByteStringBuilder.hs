@@ -1,8 +1,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-redundant-constraints  #-}
-module Data.Type.BitRecords.Builder.LazyByteStringBuilder2 where
+module Data.Type.BitRecords.Writer.ByteStringBuilder where
 
-import Data.Type.BitRecords.Builder.BitBuffer64
+import Data.Type.BitRecords.BitBuffer64
 import Data.FunctionBuilder
 import Data.Type.BitRecords.Structure
 import Data.Word
@@ -16,6 +16,10 @@ import qualified Data.ByteString.Builder as SB
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString as SB
 import Text.Printf
+
+import           Data.FunctionBuilder           ( FunctionBuilder )
+import qualified Data.FunctionBuilder          as FunctionBuilder
+
 
 -- * 'BitBuffer64' construction from 'Extends (Structure sizeType's)
 
@@ -153,7 +157,7 @@ appendBitBuffer64 !x' =
                            !totalSize' = totalSize + bitBuffer64MaxLengthBytes
                        in go rest nextBuilder emptyBitBuffer64 totalSize'
 
--- | Write all the b*y*tes, into the 'BitBuilderState' this allows general
+-- | Write all the b__y__tes, into the 'BitBuilderState' this allows general
 -- purposes non-byte aligned builders.
 appendStrictByteString :: SB.ByteString -> BitBuilder
 appendStrictByteString !sb =

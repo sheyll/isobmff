@@ -1,4 +1,4 @@
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances, TypeFamilyDependencies #-}
 module Data.Type.BitRecords.Structure.Constructor
         ()
 where
@@ -12,8 +12,10 @@ import           GHC.TypeLits
 import qualified Data.Type.BitRecords.Structure.TypeLits
                                                as Literal
 
+-- | The class accompanying 'Structure' derivatives that can be constructed via a function with corresponding
+-- arguments, to some output (e.g. a ByteString).
+--type family HasConstructor (t :: Extends (Structure sizeType))
 
--- | The class accompanying 'Structure' derivatives
 -- | The type signature of a constructor (function) for a structure
 type family Constructor (t :: Extends (Structure sizeType)) next :: k
 
@@ -28,11 +30,9 @@ type instance Constructor (LiteralStructure r) next = next
 type instance Constructor (TypeStructure Word8) next = Word8 -> next
 type instance Constructor (IntegerStructure n s e) next   =
   IntegerStructureValidateLength n (IntegerStructure n s e 'MkFixStructure -> next)
-type instance Constructor (Assign s a) next = AssignStructureValidateSize s a next
+type instance Constructor (Alias s a) next = AliasStructureValidateSize s a next
 type instance Constructor (ConditionalStructure 'True l r) next = Constructor l next
 type instance Constructor (ConditionalStructure 'False l r) next = Constructor r next
-type instance Constructor (AnyStructure (c :: Extends (Structure sizeType))) next = Constructor c next
-type instance Constructor (AnyStructure (c :: Type) ) next = c -> next
 
 _constructorSpec :: ()
 _constructorSpec =
@@ -127,7 +127,7 @@ _constructorSpec =
                 <> (undefined :: Constructor (Anonymous (Name "foo" U8)) ())
                            (undefined :: Word8)
                 <> (undefined :: Constructor
-                             ( Assign
+                             ( Alias
                                        ( Name "foo" U8 <> Name "bar" FlagStructure
                                        )
                                        (LiteralStructure (Literal.To Nat 256))
@@ -164,11 +164,3 @@ _constructorSpec =
                              (LiteralStructure (Literal.Bits '[1, 0, 1, 0]))
                              ()
                    )
-                <> (undefined :: Constructor (AnyStructure (U 64 'BE)) ())
-                           (undefined :: IntegerStructure
-                                     64
-                                     'Unsigned
-                                     'BE
-                                     'MkFixStructure
-                           )
-                <> (undefined :: Constructor (AnyStructure Word64) ()) (42)

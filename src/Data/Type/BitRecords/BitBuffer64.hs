@@ -1,6 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
-module Data.Type.BitRecords.Builder.BitBuffer64
+module Data.Type.BitRecords.BitBuffer64
     ( type BitBuffer64MaxLength
     , bitBuffer64MaxLength
     , bitBuffer64MaxLengthBytes
