@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -fno-warn-redundant-constraints  #-}
 module Data.Type.BitRecords.Builder.LazyByteStringBuilder where
 
-import Data.Type.BitRecords.Builder.BitBuffer64
+import Data.Type.BitRecords.BitBuffer64
 import Data.FunctionBuilder
 import Data.Type.BitRecords.Core
 import Data.Word

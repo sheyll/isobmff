@@ -68,7 +68,6 @@ data EmptyStructure :: Extends (Structure 'FixSize)
 
 type instance GetStructureSize EmptyStructure = 0
 type instance PrettyStructure EmptyStructure = 'PrettyEmpty
-
 type instance GetStructureSize (Anonymous (Name name struct)) = GetStructureSize struct
 type instance PrettyStructure (Anonymous (Name name struct)) = name <:> PrettyStructure struct
 
@@ -77,33 +76,32 @@ data Record :: [Extends (Named (Structure sizeType))] -> Extends (Structure size
 
 type instance GetStructureSize (Record '[]) = 0
 type instance GetStructureSize (Record (x ': xs)) = GetStructureSize (Anonymous x) + GetStructureSize (Record xs)
-
 type instance PrettyStructure (Record xs) = "Record" <:$$--> PrettyRecord xs
 
+-- | Compose 'Named' 'Structure's to a 'Record'.
 type family (<>) (a :: Extends (Named (Structure sizeType))) (b :: k) :: Extends (Structure sizeType) where
   a <> (b :: Extends (Named (Structure sizeType))) = Record '[a, b]
   a <> (Record xs) = Record (a ': xs)
+
 infixr 6 <>
 
+-- | Internal function to render 'Record's
 type family PrettyRecord (xs :: [Extends (Named (Structure sizeType))]) :: PrettyType where
   PrettyRecord '[] = 'PrettyEmpty
   PrettyRecord (x ': xs) =
     (PutStr "-" <+> PrettyStructure (Anonymous x)) <$$> PrettyRecord xs
 
-
--- | A variable length structure filled with any storable value
-data AnyStructure (content :: k) :: Extends (Structure 'VarSize)
-type instance PrettyStructure (AnyStructure c) = "AnyStructure" <:$$--> ToPretty c
-
 -- | A fixed length sequence of bits.
 data BitSequence (length :: Nat) :: Extends (Structure 'FixSize)
 
+-- | Internal function to validate that a 'BitSequence' has a valid length.
 type family WithValidBitSequenceLength (length :: Nat) (out :: k) :: k where
   WithValidBitSequenceLength length out =
     If (length <=? 64 && 1 <=? length )
       out
       (TypeError ('Text "invalid bit sequence length: " ':<>: 'ShowType length))
 
+-- | An alias to construct a 'Name'd 'BitSequence' with the given number of bits
 type family (//) (name :: Symbol) (length :: Nat) :: Extends (Named (Structure 'FixSize)) where
   name // length =
     WithValidBitSequenceLength length (Name name (BitSequence length))
@@ -121,23 +119,55 @@ data LiteralStructure a :: Extends (Structure 'FixSize)
 type instance GetStructureSize (LiteralStructure (Literal.Value s k (x :: k))) = Literal.SizeOf s x
 type instance PrettyStructure (LiteralStructure (Literal.Value s k (x :: k))) = "LiteralStructure" <:> Literal.Pretty s x
 
--- | Compile time fixed content structure aliased to existing '(Structure 'FixSize)'.
-data Assign :: Extends (Structure 'FixSize) -> Extends (Structure 'FixSize)  -> Extends (Structure 'FixSize)
 
-type family AssignStructureValidateSize (lhs :: Extends (Structure 'FixSize)) (rhs :: Extends (Structure 'FixSize)) (out :: k) :: k where
-  AssignStructureValidateSize lhs rhs out =
-    If (GetStructureSize rhs <=? GetStructureSize lhs)
+-- | Pad a 'Structure' to a structure with a length being a multiple of the length of the literal.
+data Padded (literal :: Either j j) (struct :: Extends (Structure 'FixSize)) :: Extends (Structure 'FixSize)
+
+-- | Type function calculating the number of padding bits requred to pad @struct@ to a multiple of
+-- literal size.
+type family GetPaddingSize literal (struct :: Extends (Structure 'FixSize)) :: Nat where
+  GetPaddingSize (Literal.Value s k (x :: k)) y =
+    ((Literal.SizeOf s x) - ((GetStructureSize y) `Mod` (Literal.SizeOf s x))) `Mod` (Literal.SizeOf s x)
+
+-- | Type function to validate that both arguments to 'Alias' have a valid length. The lengths are valid
+-- iff the right hand side requires the same amount of bits as the left hand side.
+-- If necessary, one can always pad the right hand side to match the left hand side using 'Padded'.
+type family PaddedStructureValidateSize literal (rhs :: Extends (Structure 'FixSize)) (out :: k) :: k where
+  PaddedStructureValidateSize (Literal.Value s k (x :: k)) rhs out =
+    If (Literal.SizeOf s x == 0)
+      (TypeError ('Text "Cannot use a literal of size 0: "
+                  ':<>: 'ShowType (Literal.Value s k (x :: k))
+                  ':<>: 'Text " to pad the structure: "
+                  ':<>: 'ShowType rhs))
       out
-      (TypeError ('Text "Assign value too big to fit into structure, the value " ':<>: 'ShowType rhs
+
+type instance GetStructureSize (Padded (either literal) struct) =
+  PaddedStructureValidateSize literal struct (GetPaddingSize literal struct + GetStructureSize struct)
+
+type instance PrettyStructure (Padded (either literal) struct) =
+  PrettyParens (PrettyStructure struct) <+> ("padded with" <:> PutNat (GetPaddingSize literal struct) <+> PutStr "bits.")
+
+-- | Alias structures, the size of the an alias structure is equal to the size of both elements.
+data Alias :: Extends (Structure 'FixSize) -> Extends (Structure 'FixSize)  -> Extends (Structure 'FixSize)
+
+-- | Internal function to validate that both arguments to 'Alias' have a valid length. The lengths are valid
+-- iff the right hand side requires the same amount of bits as the left hand side.
+-- If necessary, one can always pad the right hand side to match the left hand side using 'Padded'.
+type family AliasStructureValidateSize (lhs :: Extends (Structure 'FixSize)) (rhs :: Extends (Structure 'FixSize)) (out :: k) :: k where
+  AliasStructureValidateSize lhs rhs out =
+    If (GetStructureSize rhs == GetStructureSize lhs)
+      out
+      (TypeError ('Text "Cannot alias structures of different size " ':<>: 'ShowType rhs
                   ':<>: 'Text " requires " ':<>: 'ShowType (GetStructureSize rhs)
-                  ':<>: 'Text " bits, but the structure "  ':<>: 'ShowType lhs
-                  ':<>: 'Text " has only a size of " ':<>: 'ShowType (GetStructureSize lhs)
+                  ':<>: 'Text " bits, but "  ':<>: 'ShowType lhs
+                  ':<>: 'Text " requires " ':<>: 'ShowType (GetStructureSize lhs)
                   ':<>: 'Text " bits."))
 
-type instance GetStructureSize (Assign lhs rhs) = AssignStructureValidateSize lhs rhs (GetStructureSize lhs)
-type instance PrettyStructure (Assign lhs rhs) =
-  AssignStructureValidateSize lhs rhs
-    (PutStr "Assign" <+> PrettyStructure lhs <+> PrettyStructure rhs)
+type instance GetStructureSize (Alias lhs rhs) = AliasStructureValidateSize lhs rhs (GetStructureSize lhs)
+
+type instance PrettyStructure (Alias lhs rhs) =
+  AliasStructureValidateSize lhs rhs
+    ("Alias" <:$$--> (PrettyStructure lhs <$$> PrettyStructure rhs))
 
 
 -- ** Integer Sequences
@@ -145,14 +175,17 @@ type instance PrettyStructure (Assign lhs rhs) =
 -- | A Wrapper for Haskell types. Users should implement the 'GetStructureSize' and 'Constructor' instances.
 data TypeStructure :: Type -> Extends (Structure 'FixSize)
 
+-- | An usigned 8-bit integer
 type U8 = TypeStructure Word8
 type instance GetStructureSize (TypeStructure Word8) = 8
 type instance PrettyStructure (TypeStructure Word8) = ToPretty Word8
 
+-- | A signed 8-bit integer
 type S8 = TypeStructure Int8
 type instance GetStructureSize (TypeStructure Int8) = 8
 type instance PrettyStructure (TypeStructure Int8) = ToPretty Int8
 
+-- | A single bit structure
 type FlagStructure = TypeStructure Bool
 type instance GetStructureSize (TypeStructure Bool) = 1
 type instance PrettyStructure (TypeStructure Bool) = ToPretty Bool
@@ -178,6 +211,7 @@ data Endianess = LE | BE
 -- | Integer sign of an 'IntegerStructure'
 data Sign = Signed | Unsigned
 
+-- | Internal function to ensure that the length of an 'IntegerStructure' is 16,32 or 64
 type family IntegerStructureValidateLength (n :: Nat) (out :: k) where
   IntegerStructureValidateLength n out =
     If (n == 16) out (If (n == 32) out (If (n == 64) out
@@ -191,12 +225,13 @@ type instance PrettyStructure (IntegerStructure n s e) =
     <+> If (s == 'Signed) (PutStr "Signed") (PutStr "Unsigned")
     <+> If (e == 'BE) (PutStr "BE") (PutStr "LE"))
 
+-- | An unsigned integer structure
 type U n e = IntegerStructure n 'Unsigned e
+
+-- / A signed integer structure
 type S n e = IntegerStructure n 'Signed e
 
--- | (Structure 'FixSize) consisting of predefined type level literal values.
-
-
+-- | Conditional structure, since this is equivalent to 'If' this might be removed (TODO)
 data ConditionalStructure (condition :: Bool) (ifStruct :: Extends (Structure 'FixSize)) (elseStruct :: Extends (Structure 'FixSize)) :: Extends (Structure 'FixSize)
 
 type instance GetStructureSize (ConditionalStructure 'True l r) = GetStructureSize l
@@ -219,6 +254,7 @@ showStructure _ = showPretty (Proxy :: Proxy (PrettyStructure struct))
 -- Tests
 -- -------------------------------------------
 
+-- | Internal type used for unit tests
 data BoolProxy (t :: Bool) where
   TrueProxy :: BoolProxy 'True
   FalseProxy :: BoolProxy 'False
@@ -233,7 +269,12 @@ _typeSpecGetStructureSize
             , GetStructureSize ("field 1"//3 <> "field 2"//2 <> "field 3"//5 <>
                           Name "field 4" ("field 4.1"//3 <> "field 4.2"//6))
                          `ShouldBe` 19
-            , GetStructureSize (Assign (BitSequence 4) (LiteralStructure (Literal.Bits '[1,0,0,1]))) `ShouldBe` 4
+            , GetStructureSize (Alias (BitSequence 4) (LiteralStructure (Literal.Bits '[1,0,0,1]))) `ShouldBe` 4
+            , GetStructureSize (Padded ('Left  (Literal.Bits '[1,0,1,0,1,0,1,0])) ("x"//1 <> "y"//2)) `ShouldBe` 8
+            , GetStructureSize (Padded ('Right (Literal.Bits '[1,0,1,0,1,0,1,0])) (Anonymous ("x"//9))) `ShouldBe` 16
+            , GetStructureSize (Padded ('Left  (Literal.Bits '[1,0,1,0,1,0,1,0])) (Anonymous ("x"//22))) `ShouldBe` 24
+            , GetStructureSize (Padded ('Right (Literal.Bits '[1,0,1,0,1,0,1,0])) (Anonymous ("x"//33))) `ShouldBe` 40
+            , GetStructureSize (Padded ('Right (Literal.To (Literal.Sequence Word8 Nat) '[0,255,0,255])) (Anonymous ("x"//10))) `ShouldBe` 32
             ]
 _typeSpecGetStructureSize TrueProxy = Valid
 _typeSpecGetStructureSize FalseProxy = Valid
@@ -258,16 +299,16 @@ _prettySpec =
        , PrettyStructure (S 64 'BE)
        , PrettyStructure (U 16 'BE)
        , PrettyStructure (U 32 'BE)
+       , PrettyStructure (Padded ('Left (Literal.Bits '[1,0,1,0,1,0,1,0])) ("x"//2 <> "y"//7 <> "z"//5))
        , PrettyStructure (U 64 'BE)
        , PrettyStructure ("x"//32 <> "y"//32 <> "z"//8)
        , PrettyStructure (ConditionalStructure 'False S8 U8)
        , PrettyStructure (ConditionalStructure 'True S8 U8)
-       , PrettyStructure (Assign S8 (LiteralStructure (Literal.To Nat 123)))
-       , PrettyStructure (Assign S8 (LiteralStructure (Literal.NegativeInt 123)))
-       , PrettyStructure (Assign FlagStructure (LiteralStructure (Literal.To Literal.Bit 1)))
+       , PrettyStructure (Alias S8 (Padded ('Left (Literal.To Word8 0)) (LiteralStructure (Literal.To Nat 123))))
+       , PrettyStructure (Alias S8 (LiteralStructure (Literal.To Word8 123)))
+       , PrettyStructure (Alias FlagStructure (LiteralStructure (Literal.To Literal.Bit 1)))
        , PrettyStructure (LiteralStructure (Literal.Bits '[1,0,1,0]))
-       , PrettyStructure (AnyStructure (U 64 'BE))
-       , PrettyStructure ("foo" :# AnyStructure (U 64 'BE) <> "bar" :# AnyStructure Double)
+       , PrettyStructure (Anonymous ("foo" :# U 64 'BE))
        ]
       )
     )

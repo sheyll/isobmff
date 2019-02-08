@@ -2,7 +2,7 @@
 module Data.Type.BitRecords.Enum where
 
 import           Data.Type.BitRecords.Core
-import           Data.Type.BitRecords.Builder.BitBuffer64
+import           Data.Type.BitRecords.BitBuffer64
 import           Data.FunctionBuilder
 import           Data.Type.BitRecords.Builder.LazyByteStringBuilder
 import           Data.Proxy
