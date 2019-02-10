@@ -1,4 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 -- | NamedStructure definition for sequences of bits.
 --
 -- This module provides the core data types and functions for
@@ -39,6 +42,11 @@ import           Data.Word
 import           Data.Bits
 import           GHC.TypeLits
 import           Text.Printf
+import           Data.Type.BitRecords.Builder.LazyByteStringBuilder
+import Data.FunctionBuilder
+import Data.Type.BitRecords.BitBuffer64
+import Control.Category
+import Prelude hiding ((.), id)
 
 -- * Bit-Records
 
@@ -436,3 +444,270 @@ type family PrintHexIfPossible t (s :: Nat) :: PrettyType where
   PrintHexIfPossible Word16 s = PutHex16 s
   PrintHexIfPossible Word8 s = PutHex8 s
   PrintHexIfPossible x s = TypeError ('Text "Invalid size field type: " ':<>: 'ShowType x)
+
+-- * Binary serialization
+
+-- *** BitFields
+
+instance
+  forall (nested :: BitField rt st s)  .
+   ( HasFunctionBuilder BitBuilder (Proxy nested) )
+  => HasFunctionBuilder BitBuilder (Proxy (Konst nested)) where
+  type ToFunction BitBuilder (Proxy (Konst nested)) a =
+    ToFunction BitBuilder (Proxy nested) a
+  toFunctionBuilder _ = toFunctionBuilder (Proxy @nested)
+
+
+instance
+  forall rt (nested :: BitField rt st s) .
+   ( DynamicContent BitBuilder (Proxy nested) rt )
+  => DynamicContent BitBuilder (Proxy (Konst nested)) rt where
+  addParameter _ = addParameter (Proxy @nested)
+
+-- -- *** Labbeled Fields
+
+instance
+  forall nested l .
+   ( HasFunctionBuilder BitBuilder (Proxy nested) )
+  => HasFunctionBuilder BitBuilder (Proxy (LabelF l nested)) where
+  type ToFunction BitBuilder (Proxy (LabelF l nested)) a =
+    ToFunction BitBuilder (Proxy nested) a
+  toFunctionBuilder _ = toFunctionBuilder (Proxy @nested)
+
+instance ( DynamicContent BitBuilder (Proxy nested) b )
+  => DynamicContent BitBuilder (Proxy (LabelF l nested)) b where
+  addParameter _ = addParameter (Proxy @nested)
+
+instance
+  forall (nested :: Extends (BitField rt st s)) l .
+   ( HasFunctionBuilder BitBuilder (Proxy nested) )
+  => HasFunctionBuilder BitBuilder (Proxy (Labelled l nested)) where
+  type ToFunction BitBuilder (Proxy (Labelled l nested)) a =
+    ToFunction BitBuilder (Proxy nested) a
+  toFunctionBuilder _ = toFunctionBuilder (Proxy @nested)
+
+instance
+  forall rt st s (nested :: Extends (BitField rt st s)) (l :: Symbol) out .
+   ( DynamicContent BitBuilder (Proxy nested) rt )
+  => DynamicContent BitBuilder (Proxy (Labelled l nested)) rt where
+  addParameter _ = addParameter (Proxy @nested)
+
+-- -- **** Bool
+
+instance forall f . (FieldWidth f ~ 1) =>
+  HasFunctionBuilder BitBuilder (Proxy (f := 'True)) where
+  toFunctionBuilder _ = immediate (appendBitBuffer64 (bitBuffer64 1 1))
+
+instance forall f . (FieldWidth f ~ 1) =>
+  HasFunctionBuilder BitBuilder (Proxy (f := 'False)) where
+  toFunctionBuilder _ = immediate (appendBitBuffer64 (bitBuffer64 1 0))
+
+instance HasFunctionBuilder BitBuilder (Proxy (MkField 'MkFieldFlag)) where
+  type ToFunction BitBuilder (Proxy (MkField 'MkFieldFlag)) a = Bool -> a
+  toFunctionBuilder _ =
+    deferred (appendBitBuffer64 . bitBuffer64 1 . (\ !t -> if t then 1 else 0))
+
+-- -- new:
+
+instance forall f . (BitFieldSize (From f) ~ 1) =>
+  HasFunctionBuilder BitBuilder (Proxy (f :=. 'True)) where
+  toFunctionBuilder _ = immediate (appendBitBuffer64 (bitBuffer64 1 1))
+
+instance forall f . (BitFieldSize (From f) ~ 1) =>
+  HasFunctionBuilder BitBuilder (Proxy (f :=. 'False)) where
+  toFunctionBuilder _ = immediate (appendBitBuffer64 (bitBuffer64 1 0))
+
+instance HasFunctionBuilder BitBuilder (Proxy 'MkFieldFlag) where
+  type ToFunction BitBuilder (Proxy 'MkFieldFlag) a = Bool -> a
+  toFunctionBuilder _ =
+    deferred (appendBitBuffer64 . bitBuffer64 1 . (\ !t -> if t then 1 else 0))
+
+instance DynamicContent BitBuilder (Proxy 'MkFieldFlag) Bool where
+  addParameter = toFunctionBuilder
+
+-- -- **** Bits
+
+instance forall (s :: Nat) . (KnownBufferSize s) =>
+  HasFunctionBuilder BitBuilder (Proxy (MkField ('MkFieldBits :: BitField (B s) Nat s))) where
+  type ToFunction BitBuilder (Proxy (MkField ('MkFieldBits :: BitField (B s) Nat s))) a = B s -> a
+  toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64ProxyLength (Proxy @s) . unB)
+
+
+instance forall (s :: Nat) r . (KnownBufferSize s) =>
+  DynamicContent BitBuilder (Proxy (MkField ('MkFieldBits :: BitField (B s) Nat s))) (B s) where
+  addParameter = toFunctionBuilder
+
+-- -- **** Naturals
+
+instance
+  HasFunctionBuilder BitBuilder (Proxy (MkField 'MkFieldU64)) where
+  type ToFunction BitBuilder (Proxy (MkField 'MkFieldU64)) a = Word64 -> a
+  toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64 64)
+
+instance
+  DynamicContent BitBuilder (Proxy (MkField 'MkFieldU64)) Word64 where
+  addParameter = toFunctionBuilder
+
+instance
+  HasFunctionBuilder BitBuilder (Proxy (MkField 'MkFieldU32)) where
+  type ToFunction BitBuilder (Proxy (MkField 'MkFieldU32)) a = Word32 -> a
+  toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64 32 . fromIntegral)
+
+instance
+  DynamicContent BitBuilder (Proxy (MkField ('MkFieldU32:: BitField Word32 Nat 32))) Word32 where
+  addParameter = toFunctionBuilder
+
+instance
+  HasFunctionBuilder BitBuilder (Proxy 'MkFieldU32) where
+  type ToFunction BitBuilder (Proxy 'MkFieldU32) a = Word32 -> a
+  toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64 32 . fromIntegral)
+
+instance
+  DynamicContent BitBuilder (Proxy 'MkFieldU32) Word32 where
+  addParameter = toFunctionBuilder
+
+instance
+  HasFunctionBuilder BitBuilder (Proxy (MkField 'MkFieldU16)) where
+  type ToFunction BitBuilder (Proxy (MkField 'MkFieldU16)) a = Word16 -> a
+  toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64 16 . fromIntegral)
+
+instance
+  DynamicContent BitBuilder (Proxy (MkField 'MkFieldU16)) Word16 where
+  addParameter = toFunctionBuilder
+
+instance
+  HasFunctionBuilder BitBuilder (Proxy (MkField 'MkFieldU8)) where
+  type ToFunction BitBuilder (Proxy (MkField 'MkFieldU8)) a = Word8 -> a
+  toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64 8 . fromIntegral)
+
+instance
+  DynamicContent BitBuilder (Proxy (MkField 'MkFieldU8)) Word8 where
+  addParameter = toFunctionBuilder
+
+-- -- **** Signed
+
+instance
+  HasFunctionBuilder BitBuilder (Proxy (MkField 'MkFieldI64)) where
+  type ToFunction BitBuilder (Proxy (MkField 'MkFieldI64)) a = Int64 -> a
+  toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64 64 . fromIntegral @Int64 @Word64)
+
+instance
+  DynamicContent BitBuilder (Proxy (MkField 'MkFieldI64)) Int64 where
+  addParameter = toFunctionBuilder
+
+instance
+  HasFunctionBuilder BitBuilder (Proxy (MkField 'MkFieldI32)) where
+  type ToFunction BitBuilder (Proxy (MkField 'MkFieldI32)) a = Int32 -> a
+  toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64 32 . fromIntegral . fromIntegral @Int32 @Word32)
+
+instance
+  DynamicContent BitBuilder (Proxy (MkField 'MkFieldI32)) Int32 where
+  addParameter = toFunctionBuilder
+
+instance
+  HasFunctionBuilder BitBuilder (Proxy (MkField 'MkFieldI16)) where
+  type ToFunction BitBuilder (Proxy (MkField 'MkFieldI16)) a = Int16 -> a
+  toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64 16 . fromIntegral . fromIntegral @Int16 @Word16)
+
+instance
+  DynamicContent BitBuilder (Proxy (MkField 'MkFieldI16)) Int16 where
+  addParameter = toFunctionBuilder
+
+instance
+  HasFunctionBuilder BitBuilder (Proxy (MkField 'MkFieldI8)) where
+  type ToFunction BitBuilder (Proxy (MkField 'MkFieldI8)) a = Int8 -> a
+  toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64 8 . fromIntegral . fromIntegral @Int8 @Word8)
+
+instance
+  DynamicContent BitBuilder (Proxy (MkField 'MkFieldI8)) Int8 where
+  addParameter = toFunctionBuilder
+
+-- *** Assign static values
+
+instance
+  forall
+    rt
+    (len :: Nat)
+    (t :: BitField rt Nat len)
+    (f :: Extends (BitRecordField t))
+    (v :: Nat)
+    .
+      ( KnownNat v
+      , DynamicContent BitBuilder (Proxy f) rt
+      , Num rt
+      )
+      =>  HasFunctionBuilder BitBuilder (Proxy (f := v)) where
+  toFunctionBuilder _ =
+    fillParameter (addParameter (Proxy @f)) (fromIntegral (natVal (Proxy @v)))
+
+instance forall v f x . (KnownNat v, DynamicContent BitBuilder (Proxy f) x, Num x) =>
+  HasFunctionBuilder BitBuilder (Proxy (f := ('PositiveNat v))) where
+  toFunctionBuilder _ =
+    fillParameter (addParameter (Proxy @f)) (fromIntegral (natVal (Proxy @v)))
+
+
+instance forall v f x . (KnownNat v, DynamicContent BitBuilder (Proxy f) x, Num x) =>
+  HasFunctionBuilder BitBuilder (Proxy (f := ('NegativeNat v))) where
+  toFunctionBuilder _ = fillParameter (addParameter (Proxy @f)) (fromIntegral (-1 * (natVal (Proxy @v))))
+
+-- new:
+
+instance
+  forall (f :: Extends (BitField rt Nat len)) (v :: Nat) .
+  ( KnownNat v
+  , DynamicContent BitBuilder (Proxy f) rt
+  , Num rt)
+  =>
+  HasFunctionBuilder BitBuilder (Proxy (f :=. v)) where
+  toFunctionBuilder _ =
+    fillParameter
+      (addParameter (Proxy @f))
+      (fromIntegral (natVal (Proxy @v)))
+
+-- -- instance forall v f a x . (KnownNat v, HasFunctionBuilder BitBuilder (Proxy f) a, ToFunction BitBuilder (Proxy f) a ~ (x -> a), Num x) =>
+-- --   HasFunctionBuilder BitBuilder (Proxy (f := ('PositiveNat v))) a where
+-- --   toFunctionBuilder _ =  fillParameter (toFunctionBuilder (Proxy @f)) (fromIntegral (natVal (Proxy @v)))
+--
+--
+-- -- instance forall v f a x . (KnownNat v, HasFunctionBuilder BitBuilder (Proxy f) a, ToFunction BitBuilder (Proxy f) a ~ (x -> a), Num x) =>
+-- --   HasFunctionBuilder BitBuilder (Proxy (f := ('NegativeNat v))) a where
+-- --   toFunctionBuilder _ = fillParameter (toFunctionBuilder (Proxy @f)) (fromIntegral (-1 * (natVal (Proxy @v))))
+
+
+-- ** 'BitRecord' instances
+
+instance forall (r :: Extends BitRecord) . HasFunctionBuilder BitBuilder (Proxy (From r)) =>
+  HasFunctionBuilder BitBuilder (Proxy r) where
+  type ToFunction BitBuilder (Proxy r) a =
+    ToFunction BitBuilder (Proxy (From r)) a
+  toFunctionBuilder _ = toFunctionBuilder (Proxy @(From r))
+
+-- *** 'BitRecordMember'
+
+instance forall f . HasFunctionBuilder BitBuilder (Proxy f) => HasFunctionBuilder BitBuilder (Proxy ('BitRecordMember f)) where
+  type ToFunction BitBuilder (Proxy ('BitRecordMember f)) a = ToFunction BitBuilder (Proxy f) a
+  toFunctionBuilder _ = toFunctionBuilder (Proxy @f)
+
+-- *** 'RecordField'
+
+
+instance forall f . HasFunctionBuilder BitBuilder (Proxy f)
+  => HasFunctionBuilder BitBuilder (Proxy ('RecordField f)) where
+  type ToFunction BitBuilder (Proxy ('RecordField f)) a =
+        ToFunction BitBuilder (Proxy f) a
+  toFunctionBuilder _ = toFunctionBuilder (Proxy @f)
+
+
+-- *** 'AppendedBitRecords'
+
+instance forall l r .
+  (HasFunctionBuilder BitBuilder (Proxy l), HasFunctionBuilder BitBuilder (Proxy r))
+   => HasFunctionBuilder BitBuilder (Proxy ('BitRecordAppend l r)) where
+  type ToFunction BitBuilder (Proxy ('BitRecordAppend l r)) a =
+    ToFunction BitBuilder (Proxy l) (ToFunction BitBuilder (Proxy r) a)
+  toFunctionBuilder _ = toFunctionBuilder (Proxy @l) . toFunctionBuilder (Proxy @r)
+
+-- *** 'EmptyBitRecord' and '...Pretty'
+
+instance HasFunctionBuilder BitBuilder (Proxy 'EmptyBitRecord) where
+  toFunctionBuilder _ = id

@@ -13,7 +13,7 @@ module Data.Type.BitRecords.BitBuffer64
     , emptyBitBuffer64
     , bitBuffer64ProxyLength
     , bufferBits
-    , type KnownChunkSize
+    , type KnownBufferSize
     ) where
 
 import           Data.Proxy
@@ -88,7 +88,7 @@ emptyBitBuffer64 = BitBuffer64 0 0
 
 -- | Create a 'BitBuffer64' with a length given by a 'Proxy' to a type level
 -- 'Nat'.
-bitBuffer64ProxyLength :: (KnownChunkSize n) => Proxy n -> Word64 -> BitBuffer64
+bitBuffer64ProxyLength :: (KnownBufferSize n) => Proxy n -> Word64 -> BitBuffer64
 bitBuffer64ProxyLength !plen !v = bitBuffer64 fieldLen v
     where
       !fieldLen = fromIntegral (natVal plen)
@@ -120,5 +120,5 @@ bufferBits (BitBuffer64 !bits !len) (BitBuffer64 !buff !offset) =
     in
         (BitBuffer64 restBits restLen, BitBuffer64 buff' (offset + writeLen))
 
-type family KnownChunkSize (s :: Nat) :: Constraint where
-        KnownChunkSize size = (KnownNat size, size <= BitBuffer64MaxLength)
+type family KnownBufferSize (s :: Nat) :: Constraint where
+        KnownBufferSize size = (KnownNat size, size <= BitBuffer64MaxLength)

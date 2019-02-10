@@ -1,22 +1,29 @@
 {-# LANGUAGE UndecidableInstances #-}
-module EnumSpec (spec) where
+module EnumSpec
+  ( spec
+  )
+where
 
-import Data.Proxy
-import Data.Type.BitRecords
-import Data.Type.Equality ()
-import Prelude hiding ((.), id)
-import Test.Hspec
+import           Util
+import           Data.Proxy
+import           Data.Type.BitRecords
+import           Data.Type.Equality             ( )
+import           Prelude                 hiding ( (.)
+                                                , id
+                                                )
+import           Test.Hspec
 
 spec = do
   describe "ToPretty" $ do
-    it "renders as a record using showRecord" $
-      showRecord (Proxy @(BitRecordOfEnum (EnumParam "test" TestEnumExt)))
+    it "renders as a record using showRecord"
+      $ showRecord (Proxy @(BitRecordOfEnum (EnumParam "test" TestEnumExt)))
       `shouldBe` "test: <<enum>>(2)"
   describe "BitBuilder" $ do
-    it "produces binary output" $
-     bitBuffer64Printer (Proxy  @(BitRecordOfEnum (EnumParam "test" TestEnumExt)))
-      (MkEnumValue (Proxy @'A))
-     `shouldBe` "<< 40 >>"
+    it "produces binary output"
+      $          bitBuffer64Printer
+                   (Proxy @(BitRecordOfEnum (EnumParam "test" TestEnumExt)))
+                   (MkEnumValue (Proxy @ 'A))
+      `shouldBe` "<< 40 >>"
 
 type TestEnumExt = ExtEnum TestEnum 2 'Be FieldU16
 

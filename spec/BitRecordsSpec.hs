@@ -1,8 +1,9 @@
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
 module BitRecordsSpec (spec) where
 
+import Util
 import Data.Bits
-import Data.ByteString.Builder
+import qualified Data.ByteString.Lazy          as B
 import Data.Proxy
 import Data.Type.BitRecords
 import Data.Type.Equality ()
@@ -10,7 +11,7 @@ import Data.Kind.Extra
 import GHC.TypeLits
 import Prelude hiding ((.), id)
 import Test.Hspec
-import Test.QuickCheck (property, Arbitrary(..), choose)
+import Test.QuickCheck (property)
 import Test.TypeSpecCrazy
 import Text.Printf
 
@@ -425,14 +426,14 @@ spec = do
     it "writes (and flushes) bits" $
         let rec = Proxy
             rec :: Proxy TestRecUnAligned
-            actualB :: Builder
+            actualB :: B.ByteString
             actualB =
-                  runBitBuilderHoley
-                  (toFunctionBuilder rec)
-                          1
-                          3
-                          7
-            actual = printBuilder actualB
+                  writeBits
+                    (toFunction (toFunctionBuilder rec :: FunctionBuilder BitBuilder BitBuilder (B 8 -> B 7 -> B 8 -> BitBuilder))
+                            1
+                            3
+                            7)
+            actual = printByteString actualB
             in  actual `shouldBe`
                   "<< 01 00 06 00 00 00 00 0f fc >>"
     describe "Formatting sub-byte fields" $ do
@@ -440,32 +441,26 @@ spec = do
         property $ \value ->
           let rec = Proxy
               rec :: Proxy (Field 4 := 0 .+. "here" @: Field 4)
-              actualB :: Builder
-              actualB = runBitBuilderHoley (toFunctionBuilder rec) value
-              actual = printBuilder actualB
+              actualB :: B.ByteString
+              actualB = writeBits (toFunction (toFunctionBuilder rec :: FunctionBuilder BitBuilder BitBuilder (B 4 -> BitBuilder)) value)
+              actual = printByteString actualB
               expected = printf "<< %.2x >>" (value .&. 0xf)
               in actual `shouldBe` expected
       it "renders (Flag := 0 .+. Field 7 := 130) to << 02 >>" $
         let rec = Proxy
             rec :: Proxy (Flag := 'False .+. Field 7 := 130)
-            actual = printBuilder b
-              where b = runBitBuilderHoley (toFunctionBuilder rec)
+            actual = printByteString b
+              where b = writeBits (toFunction (toFunctionBuilder rec :: FunctionBuilder BitBuilder BitBuilder BitBuilder))
         in actual `shouldBe` "<< 02 >>"
-  describe "ByteStringBuilder" $
-    describe "runBitBuilderHoley" $
+  describe "LazyByteStringBuilder" $
+    describe "writeBits" $
       it "0x01020304050607 to << 00 01 02 03 04 05 06 07 >>" $
         let expected = "<< 00 01 02 03 04 05 06 07 >>"
             actual =
-               printBuilder
-                (runBitBuilderHoley
-                 (toFunctionBuilder
-                     (bitBuffer64 64 0x01020304050607)))
+               printByteString
+                (writeBits
+                 (toFunction
+                   (toFunctionBuilder
+                      (bitBuffer64 64 0x01020304050607) :: FunctionBuilder BitBuilder BitBuilder BitBuilder)))
             in actual `shouldBe` expected
 #endif
-
-instance (KnownNat n, n <= 64) => Arbitrary (B n) where
-  arbitrary = do
-    let h = 2^(n'-1) - 1
-        n' = fromIntegral (natVal (Proxy @n)) :: Int
-    x <- choose (0, h + h + 1)
-    return (B x)

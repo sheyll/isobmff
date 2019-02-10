@@ -3,7 +3,6 @@
 module Data.ByteString.IsoBaseFileFormat.Boxes.TrackExtends where
 
 import Data.ByteString.IsoBaseFileFormat.Box
-
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.ReExports
 
@@ -31,8 +30,10 @@ trackExtends
   -> Word16 -- ^ sample degradation priority
   -> Box (FullBox TrackExtends 0)
 trackExtends =
-   wrapBitBuilderWithSize (fullBox 0 . MkTrackExtends) (Proxy @TrackExtendsBody)
-
+  toFunction
+    (mapAccumulator
+      (fullBox 0 . MkTrackExtends . execBitBuilder)
+         (toFunctionBuilder (Proxy @TrackExtendsBody)))
 
 newtype TrackExtends where
   MkTrackExtends :: BuilderWithSize -> TrackExtends

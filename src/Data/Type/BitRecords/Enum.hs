@@ -124,7 +124,7 @@ fromEnumValue (MkEnumValue p) = enumValue p
 
 instance
   forall (size :: Nat) e (v :: e) (f :: Extends (BitRecordField ('MkFieldCustom :: BitField (EnumValue e) e size))) .
-    (KnownNat (FromEnum e v), KnownChunkSize size) =>
+    (KnownNat (FromEnum e v), KnownBufferSize size) =>
   HasFunctionBuilder BitBuilder (Proxy (f := v))  where
   toFunctionBuilder _ = immediate
     (appendBitBuffer64
@@ -135,7 +135,7 @@ instance
 
 instance
   forall (size :: Nat)  e  .
-  (KnownChunkSize size) =>
+  (KnownBufferSize size) =>
   HasFunctionBuilder BitBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size)))
   where
   type ToFunction BitBuilder (Proxy (MkField ('MkFieldCustom :: BitField (EnumValue e) e size))) r =

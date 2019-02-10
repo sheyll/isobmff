@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-redundant-constraints  #-}
 module Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor where
 
+import           Data.ByteString.Lazy as B
 import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import           Data.ByteString.IsoBaseFileFormat.ReExports
@@ -22,16 +23,17 @@ esdBox :: forall (record :: Extends (Descriptor 'ES_Descr)) (rendered :: BitReco
        => Proxy record -> ToFunction BitBuilder (Proxy rendered) EsdBox
 esdBox =
   toFunction
-  . esdBoxHoley
+  . esdBoxFunctionBuilder
 
-esdBoxHoley :: forall (record :: Extends (Descriptor 'ES_Descr)) r (rendered :: BitRecord) .
+esdBoxFunctionBuilder :: forall (record :: Extends (Descriptor 'ES_Descr)) r (rendered :: BitRecord) .
                ( HasFunctionBuilder BitBuilder (Proxy rendered)
                , rendered ~ (RenderEsDescr record)
                )
              => Proxy record -> FunctionBuilder EsdBox r (ToFunction BitBuilder (Proxy rendered) r)
-esdBoxHoley _p =
-  mapAccumulator (fullBox 0 . Esd) $
-  builderBoxConstructor (Proxy @rendered)
+esdBoxFunctionBuilder _p =
+  mapAccumulator
+    (fullBox 0 . Esd . execBitBuilder)
+    (toFunctionBuilder (Proxy @rendered))
 
 type RenderEsDescr (d :: Extends (Descriptor 'ES_Descr)) =
   BitRecordOfDescriptor $ (From d)

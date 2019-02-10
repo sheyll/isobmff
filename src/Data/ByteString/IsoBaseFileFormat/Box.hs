@@ -16,6 +16,7 @@ import           Data.Singletons.Prelude.List                      (type (++),
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 
 -- * Box Type Classes
 -- | Base class for all (abstract/phantom/normal-) types that represent boxes
@@ -245,6 +246,11 @@ instance IsBoxContent BoxTypeExtension where
 instance IsBoxContent () where
   boxSize _ = 0
   boxBuilder _ = mempty
+
+-- | Trivial instance for 'ByteString'
+instance IsBoxContent BL.ByteString where
+  boxSize = fromIntegral . BL.length
+  boxBuilder = lazyByteString
 
 -- | Trivial instance for 'ByteString'
 instance IsBoxContent B.ByteString where

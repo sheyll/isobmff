@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ElementaryStreamDescriptorSpec (spec) where
 
+import Util
 import Test.Hspec
 import Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
 import Data.ByteString.Mp4.Boxes.AudioSpecificConfig

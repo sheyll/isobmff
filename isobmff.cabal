@@ -183,17 +183,19 @@ test-suite spec
                      , Mp4AudioFileSpec
                      , Mp4AudioSegmentSpec
                      , TypeLayoutSpec
+                     , Util
   build-depends:       base >= 4.12 && < 5
+                     , binary
                      , bytestring
+                     , function-builder
                      , hspec
                      , isobmff
-                     , binary
+                     , mtl
+                     , pretty-types >= 0.2.1 && < 0.4
+                     , QuickCheck
                      , text
                      , type-spec
-                     , mtl
-                     , QuickCheck
                      , tagged
-                     , pretty-types >= 0.2.1 && < 0.4
   default-extensions:  BangPatterns
                      , ConstraintKinds
                      , CPP

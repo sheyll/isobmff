@@ -7,6 +7,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.TrackRun (trackRunIso5, TrackRun)
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
 
 -- | Create a track run box. First parameter is the accumulated offset to the
 -- /moof/ box. This is needed for data offset calculation. Then follows a list
@@ -24,14 +25,14 @@ trackRunIso5 !mdatOffset !samples = Box c
                                   + fromIntegral
                                   ((headerStaticSize `div` 8)
                                    + sampleCount * (sampleStaticSize `div` 8))
-            !h                = bitBuilderWithSize (Proxy @(Header TrackRunFlagsIso5))
+            !h                = toBuilderWithSizeConstructor (Proxy @(Header TrackRunFlagsIso5))
             !headerStaticSize = (natVal (Proxy @(SizeInBits (Header TrackRunFlagsIso5))))
             !sampleStaticSize = (natVal (Proxy @(SizeInBits (Sample TrackRunFlagsIso5))))
             !sampleCount      = fromIntegral (length samples)
 
         !body = mconcat $ s <$> samples
           where
-            s (!duration, !bs) = bitBuilderWithSize (Proxy @(Sample TrackRunFlagsIso5)) duration size
+            s (!duration, !bs) = toBuilderWithSizeConstructor (Proxy @(Sample TrackRunFlagsIso5)) duration size
               where
                 !size = fromIntegral (BS.length bs)
 

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Mp4AudioFileSpec (spec) where -- TODO rename to mp4 audio init spec
 
+import           Util
 import Test.Hspec
 import Data.ByteString.Mp4.Boxes.BaseDescriptor
 import Data.ByteString.Mp4.Boxes.AudioSpecificConfig

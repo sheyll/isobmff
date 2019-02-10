@@ -21,25 +21,25 @@ import           Test.TypeSpecCrazy
 
 type Static64 =
       Field 3 := 2
-  .+. Field 5 := 4
-  .+. Field 9 := 333
-  .+. Field 7 := 35
-  .+. Field 30 := 458329
-  .+. Field 2 := 1
-  .+. Field 2 := 0
-  .+. Field 2 := 1
+  .+: Field 5 := 4
+  .+: Field 9 := 333
+  .+: Field 7 := 35
+  .+: Field 30 := 458329
+  .+: Field 2 := 1
+  .+: Field 2 := 0
+  .+: Field 2 := 1
   .+. Field 4 := 9
 
 
 type Static64WithParams =
       Field 3 := 0
-  .+. Field 5 := 0
-  .+. Field 9 := 0
-  .+. "x" @: Field 7
-  .+. Field 30 := 0
-  .+. "y" @: Field 2
-  .+. Field 2 := 0
-  .+. Field 2 := 0
+  .+: Field 5 := 0
+  .+: Field 9 := 0
+  .+: "x" @: Field 7
+  .+: Field 30 := 0
+  .+: "y" @: Field 2
+  .+: Field 2 := 0
+  .+: Field 2 := 0
   .+. Field 4 := 0
 
 type Static128 = Field 64 := 3735928559 .+. Field 64 := 3405688830
@@ -75,34 +75,46 @@ aboutStatic64 ::
 aboutStatic64 =
   Valid
 
-lumpUp :: Word64 -> L.Builder -> [Word8]
-lumpUp m = L.unpack . L.toLazyByteString . mconcat . replicate (fromIntegral m)
+lumpUp :: Word64 -> L.ByteString -> [Word8]
+lumpUp m = L.unpack . mconcat . replicate (fromIntegral m)
 
 static64 m = lumpUp m $
-    runBitBuilderHoley $ toFunctionBuilder (Proxy :: Proxy Static64)
+    writeBits $ toFunction
+      (toFunctionBuilder (Proxy :: Proxy Static64)
+      :: FunctionBuilder BitBuilder BitBuilder BitBuilder)
 
 static64WithParam m = lumpUp m $
-    runBitBuilderHoley (toFunctionBuilder (Proxy :: Proxy Static64WithParams))
-                        (B m)
-                        (B m)
+        writeBits (toFunction (toFunctionBuilder (Proxy :: Proxy Static64WithParams)
+                                     :: FunctionBuilder BitBuilder BitBuilder
+                                           (B 7 -> B 2 -> BitBuilder))
+                                (B m)
+                                (B m))
 
 #ifdef FULLBENCHMARKS
 
 static128 m =
-  lumpUp m $ runBitBuilderHoley $ toFunctionBuilder (Proxy :: Proxy Static128)
+  lumpUp m $ writeBits $ toFunction
+    $ (toFunctionBuilder (Proxy :: Proxy Static128)
+        :: FunctionBuilder BitBuilder BitBuilder BitBuilder)
 
 static256 m =
-  lumpUp m $ runBitBuilderHoley $ toFunctionBuilder (Proxy :: Proxy Static256)
+  lumpUp m $ writeBits $ toFunction
+    $ (toFunctionBuilder (Proxy :: Proxy Static256)
+        :: FunctionBuilder BitBuilder BitBuilder BitBuilder)
 
 static517 m =
-  lumpUp m $ runBitBuilderHoley $ toFunctionBuilder (Proxy :: Proxy Static517)
+  lumpUp m $ writeBits $ toFunction
+    $ (toFunctionBuilder (Proxy :: Proxy Static517)
+        :: FunctionBuilder BitBuilder BitBuilder BitBuilder)
 
 staticPlain512bitBaseline m =
-  lumpUp m $ runBitBuilderHoley $ toFunctionBuilder
-    (Proxy :: Proxy (
-      Field 64 .+. Field 64 .+. Field 64 .+. Field 64 .+.
-      Field 64 .+. Field 64 .+. Field 64 .+. Field 64
-    ))
+  lumpUp m $ writeBits $ toFunction
+    $ (toFunctionBuilder
+         (Proxy :: Proxy (
+           Static128 :+: Static128 :+:
+           Static128 :+: Static128
+         ))
+         :: FunctionBuilder BitBuilder x x )
 
 
 #endif
@@ -177,17 +189,19 @@ main = do
                 ]
 
 bitBuffer64Word64Direct m =
-  lumpUp 1
-    $ runBitBuilder
+  L.unpack
+    $ writeBits
     $ mconcat
     $ replicate m
     $ appendBitBuffer64
     $ bitBuffer64 64 0x01020304050607
 
 bitBuffer64Word64Holey m =
-  lumpUp 1
-    $ runBitBuilderHoley
+  L.unpack
+    $ writeBits
+    $ toFunction
     $ mconcat
     $ replicate m
-    $ deferred
-    $ bitBuffer64 64 0x01020304050607
+    (toFunctionBuilder
+     (bitBuffer64 64 0x01020304050607)
+     :: FunctionBuilder BitBuilder BitBuilder BitBuilder)
