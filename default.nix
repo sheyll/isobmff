@@ -20,5 +20,6 @@ let
            rev = "0.3.0.1";
            sha256 = "0jimziax8ri2sly15mblcm2lys90x4x07ciw7zcys5msmk7l8ad9"; }) {};
 
-  in pkgs.haskellPackages.callCabal2nix
-       "isobmff" cleanSrc { function-builder = fb; }
+  in pkgs.haskell.lib.doBenchmark
+      (pkgs.haskellPackages.callCabal2nix
+       "isobmff" cleanSrc { function-builder = fb; })

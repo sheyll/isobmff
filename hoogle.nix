@@ -1,5 +1,7 @@
-with (import ./dependencies.nix).dependencies.nixos;
+
 let
+    pkgs = (import ./dependencies.nix).dependencies.nixos;
+    inherit (pkgs) lib haskellPackages stdenv haskell ghc;
     haskellDev =
       haskellPackages.override ( old: {
         overrides = lib.composeExtensions
@@ -7,10 +9,12 @@ let
                       (self: super: {
                         ghc             = super.ghc // { withPackages = super.ghc.withHoogle; };
                         ghcWithPackages = self.ghc.withPackages;
-                        isobmff         = haskell.lib.dontCheck (self.callPackage ./default.nix { });
+                        isobmff         = haskell.lib.dontBenchmark
+                                             (haskell.lib.dontCheck
+                                               (import ./default.nix { inherit pkgs; }));
                         });
                       });
-    ghcWithIsobmff = haskellDev.ghcWithPackages (packageList: with packageList; [isobmff]);    
+    ghcWithIsobmff = haskellDev.ghcWithPackages (packageList: with packageList; [isobmff]);
 in
 stdenv.mkDerivation {
   name = "${haskellDev.isobmff.name}-hoogle";
