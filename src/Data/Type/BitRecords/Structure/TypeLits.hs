@@ -3,7 +3,7 @@ module Data.Type.BitRecords.Structure.TypeLits
   ( PositiveInt
   , NegativeInt
   , Bits
-  , LiteralFamily(..)
+  , TypeLiterals(..)
   , To
   , Value
   , Empty
@@ -23,25 +23,8 @@ import           Data.Kind
 import           Data.Word
 import           GHC.TypeLits
 
+-- * Type Class Supporting Custom Type Level Literals
 
--- * Type Level Literals
-
--- | A 'Positive' 'Signed' 'Nat'
-type family PositiveInt (n :: Nat) where
-  PositiveInt n = To (Signed Nat Nat) ('Positive n :: Signed Nat Nat)
-
--- | A 'Negative' 'Signed' 'Nat'
-type family NegativeInt (n :: Nat) where
-  NegativeInt n = To (Signed Nat Nat) ('Negative n :: Signed Nat Nat)
-
--- | A literal bit sequence. The sequence is validated, only
--- zeros and ones are allowed.
-type family Bits (xs :: [Nat]) where
-    Bits xs = To (Sequence Bit Nat) xs
-
--- * Type Family Supporting Type Level Literals
-
---
 -- | A /kind/ class for /kinds/, that are /inhabited/ on  __type-level__ by a certain kind of literal.
 --
 -- [@a@] This parameter identifies the whole family; a type level literal kind of the family is determined by
@@ -51,12 +34,10 @@ type family Bits (xs :: [Nat]) where
 -- [@typeLitKind@] This is the kind of __type level literals__ /representing/ the static values inhabiting
 -- this family.
 --
-class LiteralFamily a typeLitKind | a -> typeLitKind where
+class TypeLiterals a typeLitKind | a -> typeLitKind where
 
   -- | A __predicate__ that is applied to a type-level-literal and is satisfied /iff/ the given literal
   -- is __in the range of valid type-level-literals__ of kind @typeLitKind@.
-  --
-  -- This is by 'SequenceLiteral' for example.
   type InRange a (typeLit :: typeLitKind) :: Bool
   type InRange a typeLit = 'True
 
@@ -72,15 +53,21 @@ class LiteralFamily a typeLitKind | a -> typeLitKind where
   -- | Return the number of bits that the literal value will occupy
   type SizeOf a (typeLit :: typeLitKind) :: Nat
 
--- | Make a valid 'Value' by checking the parameters using 'InRange' and return a 'Value'
+-- ** Range validation
+
+-- | Wrap a type into a 'Value' after checking that the parameters are 'InRange'
 type family To s (x :: k) where
   To s (x :: k) = If (InRange s x) (Value s k x)
     (TypeError ('Text "Cannot make a " ':<>: 'ShowType s ':<>: 'Text " from: " ':<>: 'ShowType x ))
 
--- | The representation of a /value/ belonging to a 'LiteralFamily'
+-- | The representation of a /value/ belonging to a 'TypeLiterals'
 data Value s k (x :: k) :: Type
 
 type instance ToPretty (Value s k x) = Pretty s x
+
+-- * Type Level Literals
+
+-- ** Empty
 
 -- | An empty type literal
 data Empty = Empty
@@ -88,75 +75,25 @@ data Empty = Empty
 type instance ToPretty Empty = PutStr "Empty"
 type instance ToPretty 'Empty = PutStr "Empty"
 
-instance LiteralFamily Empty Empty where
+instance TypeLiterals Empty Empty where
   type InRange Empty 'Empty = 'True
   type Pretty Empty 'Empty = 'PrettyEmpty
   type SizeOf Empty 'Empty = 0
 
-instance LiteralFamily () () where
+instance TypeLiterals () () where
   type InRange () '() = 'True
   type Pretty () '() = 'PrettyEmpty
   type SizeOf () '() = 1
 
--- | A bit literal
-data Bit
+-- **  Signed Integers
 
-type instance ToPretty Bit = PutStr "Bit"
+-- | A 'Positive' 'Signed' 'Nat'
+type family PositiveInt (n :: Nat) where
+  PositiveInt n = To (Signed Nat Nat) ('Positive n :: Signed Nat Nat)
 
-instance LiteralFamily Bit Nat where
-  type InRange Bit n = ( n == 0 || n == 1 )
-  type Pretty Bit n = PutNat n
-  type SizeOf Bit _ = 1
-  type PrettySeperator Bit _ = 'PrettyEmpty
-
--- | An unsigned byte literal
-data Byte
-
-type instance ToPretty Byte = PutStr "Byte"
-
-instance LiteralFamily Byte Nat where
-  type InRange Byte n = ( n <=? 255 )
-  type Pretty Byte n = PutHex n
-  type SizeOf Byte _ = 8
-
-instance LiteralFamily Word8 Nat where
-  type InRange Word8 n = ( n <=? 255 )
-  type Pretty Word8 n = PutNat n
-  type SizeOf Word8 _ = 8
-
-instance LiteralFamily Word16 Nat where
-  type InRange Word16 n = ( n <=? 65535 )
-  type Pretty Word16 n = PutNat n
-  type SizeOf Word16 _ = 16
-
-instance LiteralFamily Nat Nat where
-  type InRange Nat n = 'True
-  type Pretty Nat n = PutNat n
-  type SizeOf Nat x = NatSize x
-
-instance LiteralFamily Bool Bool where
-  type InRange Bool n = 'True
-  type Pretty Bool n = ToPretty n
-  type SizeOf Bool x = 1
-
-instance (LiteralFamily as ak, LiteralFamily bs bk) => LiteralFamily (as, bs) (ak, bk) where
-  type InRange (as, bs) '(a, b) = InRange as a && InRange bs b
-  type Pretty (as, bs) '(a, b) = PrettyParens (PrettyWide '[Pretty as a, Pretty bs b])
-  type SizeOf (as, bs) '(a, b) = SizeOf as a + SizeOf bs b
-
-instance (LiteralFamily s k) => LiteralFamily (Maybe s) (Maybe k) where
-  type InRange (Maybe s) 'Nothing = 'True
-  type InRange (Maybe s) ('Just x) = InRange s x
-  type Pretty (Maybe s) 'Nothing = ToPretty s <++> PutStr ":" <+> PutStr "n/a"
-  type Pretty (Maybe s) ('Just x) = ToPretty s <++> PutStr ":" <+> Pretty s x
-  type SizeOf (Maybe s) 'Nothing = 0
-  type SizeOf (Maybe s) ('Just x) = SizeOf s x
-
-
--- | The minimum  number of bits to represent the value
-type family NatSize (value :: Nat) :: Nat where
-  NatSize 0 = 1
-  NatSize n = Log2 n + 1
+-- | A 'Negative' 'Signed' 'Nat'
+type family NegativeInt (n :: Nat) where
+  NegativeInt n = To (Signed Nat Nat) ('Negative n :: Signed Nat Nat)
 
 -- | A signed type literal for family @t@ over GHC type literal @v@
 data Signed t v = Positive v | Negative v
@@ -165,8 +102,7 @@ type instance ToPretty (Signed t v) = "Signed" <:> ToPretty t <+> ToPretty v
 type instance ToPretty ('Positive v) = PutStr "+" <++> ToPretty v
 type instance ToPretty ('Negative v) = PutStr "-" <++> ToPretty v
 
-
-instance LiteralFamily t v => LiteralFamily (Signed t v) (Signed t v) where
+instance TypeLiterals t v => TypeLiterals (Signed t v) (Signed t v) where
   type instance InRange (Signed t v) ( 'Positive x) = InRange t x
   type instance InRange (Signed t v) ( 'Negative x) = InRange t x
   type instance Pretty (Signed t v) ( 'Positive x) = PutStr "+" <+> Pretty t x
@@ -180,6 +116,78 @@ type SignedByte = Signed Byte Nat
 -- | A signed 'Nat'
 type SignedInteger = Signed Nat Nat
 
+-- | An unsigned byte literal
+data Byte
+
+type instance ToPretty Byte = PutStr "Byte"
+
+instance TypeLiterals Byte Nat where
+  type InRange Byte n = ( n <=? 255 )
+  type Pretty Byte n = PutHex n
+  type SizeOf Byte _ = 8
+
+instance TypeLiterals Word8 Nat where
+  type InRange Word8 n = ( n <=? 255 )
+  type Pretty Word8 n = PutNat n
+  type SizeOf Word8 _ = 8
+
+instance TypeLiterals Word16 Nat where
+  type InRange Word16 n = ( n <=? 65535 )
+  type Pretty Word16 n = PutNat n
+  type SizeOf Word16 _ = 16
+
+instance TypeLiterals Nat Nat where
+  type InRange Nat n = 'True
+  type Pretty Nat n = PutNat n
+  type SizeOf Nat x = NatSize x
+
+-- | The minimum  number of bits to represent the value
+type family NatSize (value :: Nat) :: Nat where
+  NatSize 0 = 1
+  NatSize n = Log2 n + 1
+
+
+instance TypeLiterals Bool Bool where
+  type InRange Bool n = 'True
+  type Pretty Bool n = ToPretty n
+  type SizeOf Bool x = 1
+
+-- ** Arbitrary Sized Integers
+
+-- | A bit literal
+data Bit
+
+-- | A literal bit sequence. The sequence is validated, only
+-- zeros and ones are allowed.
+type family Bits (xs :: [Nat]) where
+    Bits xs = To (Sequence Bit Nat) xs
+
+type instance ToPretty Bit = PutStr "Bit"
+
+instance TypeLiterals Bit Nat where
+  type InRange Bit n = ( n == 0 || n == 1 )
+  type Pretty Bit n = PutNat n
+  type SizeOf Bit _ = 1
+  type PrettySeperator Bit _ = 'PrettyEmpty
+
+-- ** Instances for Products
+
+instance (TypeLiterals as ak, TypeLiterals bs bk) => TypeLiterals (as, bs) (ak, bk) where
+  type InRange (as, bs) '(a, b) = InRange as a && InRange bs b
+  type Pretty (as, bs) '(a, b) = PrettyParens (PrettyWide '[Pretty as a, Pretty bs b])
+  type SizeOf (as, bs) '(a, b) = SizeOf as a + SizeOf bs b
+
+-- ** Instances for Sums
+
+instance (TypeLiterals s k) => TypeLiterals (Maybe s) (Maybe k) where
+  type InRange (Maybe s) 'Nothing = 'True
+  type InRange (Maybe s) ('Just x) = InRange s x
+  type Pretty (Maybe s) 'Nothing = ToPretty s <++> PutStr ":" <+> PutStr "n/a"
+  type Pretty (Maybe s) ('Just x) = ToPretty s <++> PutStr ":" <+> Pretty s x
+  type SizeOf (Maybe s) 'Nothing = 0
+  type SizeOf (Maybe s) ('Just x) = SizeOf s x
+
+
 -- ** Composite Literals
 
 -- | A sequence of literals.
@@ -187,15 +195,15 @@ data Sequence s k
 
 type instance ToPretty (Sequence t v) = "Sequence of" <:> ToPretty t
 
-instance LiteralFamily s k => LiteralFamily (Sequence s k) [k] where
+instance TypeLiterals s k => TypeLiterals (Sequence s k) [k] where
   type instance InRange (Sequence s k) xs = ValidateSequenceLiterals s xs xs
-
+  
   type instance Pretty (Sequence s k) (bs :: [k]) =
     ToPretty (Sequence s k) <$$--> ToPrettySequenceLiterals s bs
-
+  
   type instance PrettySeperator (Sequence s k) (     '[]  :: [k]) = 'PrettySpace
   type instance PrettySeperator (Sequence s k) ((x ': xs) :: [k]) = 'PrettyNewline
-
+  
   type instance SizeOf (Sequence s k) (     '[]  :: [k]) = 0
   type instance SizeOf (Sequence s k) ((x ': xs) :: [k]) = SizeOf s x + SizeOf (Sequence s k) xs
 

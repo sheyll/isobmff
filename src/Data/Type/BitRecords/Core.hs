@@ -487,7 +487,7 @@ instance
   toFunctionBuilder _ = toFunctionBuilder (Proxy @nested)
 
 instance
-  forall rt st s (nested :: Extends (BitField rt st s)) (l :: Symbol) out .
+  forall rt st s (nested :: Extends (BitField rt st s)) (l :: Symbol)  .
    ( DynamicContent BitBuilder (Proxy nested) rt )
   => DynamicContent BitBuilder (Proxy (Labelled l nested)) rt where
   addParameter _ = addParameter (Proxy @nested)
@@ -533,7 +533,7 @@ instance forall (s :: Nat) . (KnownBufferSize s) =>
   toFunctionBuilder _ = deferred (appendBitBuffer64 . bitBuffer64ProxyLength (Proxy @s) . unB)
 
 
-instance forall (s :: Nat) r . (KnownBufferSize s) =>
+instance forall (s :: Nat) . (KnownBufferSize s) =>
   DynamicContent BitBuilder (Proxy (MkField ('MkFieldBits :: BitField (B s) Nat s))) (B s) where
   addParameter = toFunctionBuilder
 

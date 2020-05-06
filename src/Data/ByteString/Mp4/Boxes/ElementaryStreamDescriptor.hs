@@ -2,7 +2,6 @@
 {-# OPTIONS_GHC -fno-warn-redundant-constraints  #-}
 module Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor where
 
-import           Data.ByteString.Lazy as B
 import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import           Data.ByteString.IsoBaseFileFormat.ReExports

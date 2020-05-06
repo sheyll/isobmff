@@ -13,6 +13,7 @@ import           Prelude                 hiding ( (.)
                                                 )
 import           Test.Hspec
 
+spec :: Spec
 spec = do
   describe "ToPretty" $ do
     it "renders as a record using showRecord"

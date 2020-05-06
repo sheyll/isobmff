@@ -13,7 +13,6 @@ import           Data.Type.Pretty
 import qualified Data.ByteString               as B
 import qualified Data.Text                     as T
 import qualified Data.Text.Encoding            as E
-import           Data.Proxy
 import           Data.Kind.Extra
 import           Data.Type.BitRecords.Structure
 
@@ -42,7 +41,10 @@ utf8Bits = TH.QuasiQuoter undefined undefined mkSizedStr undefined
     let strT       = TH.LitT (TH.StrTyLit str)
         byteCount  = fromIntegral (B.length (E.encodeUtf8 (T.pack str)))
         byteCountT = TH.LitT (TH.NumTyLit byteCount)
-    return $ TH.PromotedT ''FixSizeStringStructure `TH.AppT` strT `TH.AppT` byteCountT
+    return
+      $         TH.PromotedT ''FixSizeStringStructure
+      `TH.AppT` strT
+      `TH.AppT` byteCountT
 
 
 -- instance

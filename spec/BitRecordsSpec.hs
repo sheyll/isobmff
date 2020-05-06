@@ -28,7 +28,7 @@ basicsSpec = do
           -*  1 `ShouldBe` FieldWidth (FlagJust ('Just "Blah"))
           -*  1 `ShouldBe` FieldWidth (FlagNothing ('Just "Blah"))
           -- TODO reenable tests
-          -- -*  32 `ShouldBe` SizeInBits (ToBitRecord ('Just FieldU32))
+          -- -*  32 `ShouldBe` FieldWidth (MaybeField ('Just FieldU32))
           -- -*  0 `ShouldBe` SizeInBits (ToBitRecord '[])
           -- -*  10 `ShouldBe` SizeInBits (ToBitRecord '[Field 10])
           -- -*  25 `ShouldBe` SizeInBits (ToBitRecord '[Field 10, Field 15])
@@ -123,6 +123,7 @@ arraySpec =
               expected = "<< 01 02 03 01 02 03 01 02 03 01 02 03 >>"
               in actual `shouldBe` expected
 
+sizedSpec :: SpecWith ()
 sizedSpec =
   describe "Sized" $ do
     describe "TypeChecks" $

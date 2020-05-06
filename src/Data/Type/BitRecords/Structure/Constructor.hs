@@ -5,7 +5,6 @@ where
 
 import           Data.Int
 import           Data.Kind.Extra
-import           Data.Kind
 import           Data.Word
 import           Data.Type.BitRecords.Structure
 import           GHC.TypeLits

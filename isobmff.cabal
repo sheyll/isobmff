@@ -226,8 +226,11 @@ test-suite spec
                      , TypeOperators
                      , TypeSynonymInstances
                      , UnicodeSyntax
-  ghc-options:       -Wall +RTS -A256m -n2m -RTS
-                     -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures -fprint-explicit-kinds
+  ghc-options:       -Wall
+                     -fwarn-unused-binds
+                     -fno-warn-unused-do-bind
+                     -fno-warn-missing-signatures
+                     -fprint-explicit-kinds
   if flag(complextests)
     cpp-options:      -DCOMPLEXTESTS
   else
@@ -275,8 +278,7 @@ benchmark bit-records
                      , TypeOperators
                      , TypeSynonymInstances
                      , UnicodeSyntax
-  ghc-options:       +RTS -A256m -n2m -RTS
-                     -Wall -fwarn-unused-binds
+  ghc-options:       -Wall -fwarn-unused-binds
                      -fno-warn-unused-do-bind -fprint-explicit-kinds
   if flag(fullbenchmarks)
     cpp-options:       -DFULLBENCHMARKS

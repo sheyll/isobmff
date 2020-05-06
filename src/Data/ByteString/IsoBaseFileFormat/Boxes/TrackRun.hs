@@ -7,7 +7,6 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.TrackRun (trackRunIso5, TrackRun)
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
 
 -- | Create a track run box. First parameter is the accumulated offset to the
 -- /moof/ box. This is needed for data offset calculation. Then follows a list
